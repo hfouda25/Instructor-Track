@@ -429,28 +429,166 @@ function importBackup(evt){
 }
 
 // ---------- REPORTS ----------
-function renderReports(){
-  const isAdmin = (mode==='supabase') ? !!state.profile?.is_admin : !!state.user?.is_admin;
-  const myId = (mode==='supabase'? state.profile?.id : state.user?.id);
-  const list = isAdmin? state.topics : state.topics.filter(t=>t.instructor_id===myId);
+function renderReports() {
+  // ----- existing Hours Summary logic -----
+  const isAdmin = (mode === 'supabase')
+    ? !!state.profile?.is_admin
+    : !!state.user?.is_admin;
 
-  let head='<table class="table"><thead><tr><th>Subject</th><th>Date</th><th>Hours</th><th>Topic Name</th><th>Instructor</th><th>Status</th></tr></thead><tbody>';
+  const myId = (mode === 'supabase'
+    ? state.profile?.id
+    : state.user?.id);
 
-  let body=list.map(t=>{
-    const subj = state.subjects.find(s=>s.id===t.subject_id);
-    const inst = state.instructors.find(i=>i.id===t.instructor_id);
-    const status = t.completed? 'Complete':'Pending';
-    const topic = t.completed? (t.title||''):'No completed topics yet';
-    const instructor = t.completed? (inst?.name||inst?.email||''):'No completed topics yet';
-    const date = t.date||'';
-    const hours = (t.duration_hours||0).toFixed(1);
-    return `<tr><td>${subj?.name||''}</td><td>${date}</td><td>${hours}</td><td>${topic}</td><td>${instructor}</td><td>${status}</td></tr>`;
-  }).join("");
+  const list = isAdmin
+    ? state.topics
+    : state.topics.filter(t => t.instructor_id === myId);
 
-  // If no topics at all
-  if(!list.length){
+  let head =
+    '<table class="table"><thead><tr>' +
+    '<th>Subject</th><th>Date</th><th>Hours</th>' +
+    '<th>Topic Name</th><th>Instructor</th><th>Status</th>' +
+    '</tr></thead><tbody>';
+
+  let body = list.map(t => {
+    const subj = state.subjects.find(s => s.id === t.subject_id);
+    const inst = state.instructors.find(i => i.id === t.instructor_id);
+    const status = t.completed ? 'Complete' : 'Pending';
+    const topic = t.completed ? (t.title || '') : 'No completed topics yet';
+    const instructor = t.completed ? (inst?.name || inst?.email || '') : 'No completed topics yet';
+    const date = t.date || '';
+    const hours = (t.duration_hours || 0).toFixed(1);
+    return `<tr>
+      <td>${subj?.name || ''}</td>
+      <td>${date}</td>
+      <td>${hours}</td>
+      <td>${topic}</td>
+      <td>${instructor}</td>
+      <td>${status}</td>
+    </tr>`;
+  }).join('');
+
+  if (!list.length) {
     body = '<tr><td colspan="6" class="muted">No topics entered yet.</td></tr>';
   }
+
+  document.getElementById('hoursSummary').innerHTML =
+    head + body + '</tbody></table>';
+
+  // ----- NEW: Subject Report -----
+  const subjectSelect = document.getElementById('reportSubjectSelect');
+  const instructorSelect = document.getElementById('reportInstructorSelect');
+  const reportBody = document.querySelector('#subjectReportTable tbody');
+  const btn = document.getElementById('generateSubjectReportBtn');
+
+  // If HTML is not present, nothing to do
+  if (!subjectSelect || !instructorSelect || !reportBody || !btn) return;
+
+  // Populate Subject dropdown
+  subjectSelect.innerHTML = '';
+  (state.subjects || []).forEach(s => {
+    const opt = document.createElement('option');
+    opt.value = s.id;
+    opt.textContent = s.name || s.title || ('Subject ' + s.id);
+    subjectSelect.appendChild(opt);
+  });
+
+  // Populate Instructor dropdown
+  instructorSelect.innerHTML = '<option value="all">All instructors</option>';
+  (state.instructors || []).forEach(i => {
+    const opt = document.createElement('option');
+    opt.value = i.id;
+    opt.textContent = i.name || i.email || ('Instructor ' + i.id);
+    instructorSelect.appendChild(opt);
+  });
+
+  // Click handler (re-assigned each time renderReports runs – this is OK)
+  btn.onclick = function () {
+    const subjectId = subjectSelect.value;
+    const instructorId = instructorSelect.value; // "all" or id
+
+    if (!subjectId) {
+      alert('Please select a subject.');
+      return;
+    }
+
+    const subject = (state.subjects || []).find(s => String(s.id) === String(subjectId));
+    if (!subject) {
+      alert('Subject not found.');
+      return;
+    }
+
+    const requiredHours = Number(subject.total_hours || 0);
+
+    // Respect admin / instructor visibility
+    const visibleTopics = isAdmin
+      ? (state.topics || [])
+      : (state.topics || []).filter(t => t.instructor_id === myId);
+
+    // Filter topics for this subject (+ instructor if not "all")
+    const filtered = visibleTopics.filter(t => {
+      if (String(t.subject_id) !== String(subjectId)) return false;
+      if (instructorId !== 'all' && String(t.instructor_id) !== String(instructorId)) return false;
+      return true;
+    });
+
+    const deliveredByInstructor = {};
+    let totalDelivered = 0;
+
+    filtered.forEach(t => {
+      const hrs = Number(t.duration_hours || t.hours || 0);
+      const instId = t.instructor_id;
+      if (!deliveredByInstructor[instId]) deliveredByInstructor[instId] = 0;
+      deliveredByInstructor[instId] += hrs;
+      totalDelivered += hrs;
+    });
+
+    // Clear previous rows
+    reportBody.innerHTML = '';
+
+    Object.keys(deliveredByInstructor).forEach(instId => {
+      const inst = (state.instructors || []).find(i => String(i.id) === String(instId));
+      const instructorName = inst ? (inst.name || inst.email || ('Instructor ' + instId)) : '(Unknown)';
+      const delivered = deliveredByInstructor[instId];
+      const remaining = Math.max(requiredHours - delivered, 0);
+
+      const tr = document.createElement('tr');
+      tr.innerHTML = `
+        <td>${subject.name || subject.title || subject.id}</td>
+        <td>${instructorName}</td>
+        <td>${requiredHours}</td>
+        <td>${delivered.toFixed(1)}</td>
+        <td>${remaining.toFixed(1)}</td>
+      `;
+      reportBody.appendChild(tr);
+    });
+
+    // Total row when "All instructors"
+    if (instructorId === 'all') {
+      const remainingAll = Math.max(requiredHours - totalDelivered, 0);
+      const trTotal = document.createElement('tr');
+      trTotal.innerHTML = `
+        <td><strong>${subject.name || subject.title || subject.id}</strong></td>
+        <td><strong>Total (All)</strong></td>
+        <td><strong>${requiredHours}</strong></td>
+        <td><strong>${totalDelivered.toFixed(1)}</strong></td>
+        <td><strong>${remainingAll.toFixed(1)}</strong></td>
+      `;
+      reportBody.appendChild(trTotal);
+    }
+
+    // If no topics matched
+    if (!filtered.length) {
+      const trEmpty = document.createElement('tr');
+      trEmpty.innerHTML = `
+        <td colspan="5" class="muted">
+          No delivered hours yet for this subject / instructor.
+        </td>
+      `;
+      reportBody.appendChild(trEmpty);
+    }
+  };
+}
+
 
   $('#hoursSummary').innerHTML = head + body + '</tbody></table>';
 
