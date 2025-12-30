@@ -169,8 +169,46 @@
           </div>
           <div id="hoursSummary"></div>
         </div>
+     <section id="subject-report-section">
+  <h2>Subject Report</h2>
+
+  <div class="report-filters">
+    <label>
+      Subject:
+      <select id="reportSubjectSelect">
+        <!-- options will be filled by JS -->
+      </select>
+    </label>
+
+    <label>
+      Instructor:
+      <select id="reportInstructorSelect">
+        <option value="all">All instructors</option>
+        <!-- options will be filled by JS -->
+      </select>
+    </label>
+
+    <button id="generateSubjectReportBtn">Generate Report</button>
+  </div>
+
+  <table id="subjectReportTable">
+    <thead>
+      <tr>
+        <th>Subject</th>
+        <th>Instructor</th>
+        <th>Total Required Hours</th>
+        <th>Delivered Hours</th>
+        <th>Remaining Hours</th>
+      </tr>
+    </thead>
+    <tbody>
+      <!-- JS will inject rows here -->
+    </tbody>
+  </table>
+</section>
+
       </section>
-    </section>
+  
   </main>
 
   <footer class="footer small">© AA Maritime</footer>
