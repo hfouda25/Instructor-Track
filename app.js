@@ -288,8 +288,8 @@ document.getElementById('pwUser').innerHTML = users.map(u=>`<option value="${u.i
   try {
     const topicListEl = document.getElementById('topicList');
     if (topicListEl){
-      const isAdmin = (mode==='supabase') ? !!state.profile?.is_admin : !!state.user?.is_admin;
-      if (isAdmin){
+      const isAdminInner = (mode==='supabase') ? !!state.profile?.is_admin : !!state.user?.is_admin;
+      if (isAdminInner){
         const trows = state.topics.slice().sort((a,b)=> (a.date||'').localeCompare(b.date||'')).map(t=>{
           const subj = state.subjects.find(s=>s.id===t.subject_id);
           const inst = state.instructors.find(i=>i.id===t.instructor_id);
@@ -312,13 +312,13 @@ document.getElementById('pwUser').innerHTML = users.map(u=>`<option value="${u.i
   try {
     const subjListEl = document.getElementById('subjList');
     if (subjListEl){
-      const rows = (state.subjects||[]).map(s=>`<div class="row" data-subj="${s.id}">
+      const rows2 = (state.subjects||[]).map(s=>`<div class="row" data-subj="${s.id}">
         <b class="grow">${s.name}</b>
         <span class="muted small">${(s.total_hours||0)} h</span>
         <button class="btn small" data-act="editSubject">Edit</button>
         <button class="btn small warn" data-act="delSubject">Delete</button>
       </div>`).join('');
-      subjListEl.innerHTML = rows || '<div class="muted">No subjects.</div>';
+      subjListEl.innerHTML = rows2 || '<div class="muted">No subjects.</div>';
     }
   } catch(e){}
 }
@@ -453,7 +453,11 @@ function renderReports(){
   }
 
   $('#hoursSummary').innerHTML = head + body + '</tbody></table>';
+
+  // Also update Subject Report filters when Reports tab renders
+  updateSubjectReportUI();
 }
+
 // Instructor management (Demo Mode only)
 
 // Topic management (Demo & Supabase)
@@ -575,106 +579,138 @@ function enforceTodayCompletion(topic){
   if(topic.completed && d!==today){ topic.completed=false; }
 }
 
-function populateReportFilters() {
-  const subjectSelect = document.getElementById("reportSubjectSelect");
-  const instructorSelect = document.getElementById("reportInstructorSelect");
+// ---------- SUBJECT REPORT HELPERS ----------
+
+function populateSubjectReportFilters() {
+  const subjectSelect = document.getElementById('reportSubjectSelect');
+  const instructorSelect = document.getElementById('reportInstructorSelect');
 
   if (!subjectSelect || !instructorSelect) return;
 
-  // Clear first
-  subjectSelect.innerHTML = "";
-  instructorSelect.innerHTML = `<option value="all">All instructors</option>`;
+  const subjects = state.subjects || [];
+  const instructors = state.instructors || [];
 
-  // Subjects list must already exist in your app
-  if (window.subjects && Array.isArray(subjects)) {
-    subjects.forEach(subj => {
-      const opt = document.createElement("option");
-      opt.value = subj.id;
-      opt.textContent = subj.name;
-      subjectSelect.appendChild(opt);
-    });
-  }
+  // Clear any existing options
+  subjectSelect.innerHTML = '';
+  instructorSelect.innerHTML = '<option value="all">All instructors</option>';
 
-  // Instructors list must already exist in your app
-  if (window.instructors && Array.isArray(instructors)) {
-    instructors.forEach(inst => {
-      const opt = document.createElement("option");
-      opt.value = inst.id;
-      opt.textContent = inst.name;
-      instructorSelect.appendChild(opt);
-    });
-  }
+  // Subjects
+  subjects.forEach(s => {
+    const opt = document.createElement('option');
+    opt.value = s.id;
+    opt.textContent = s.name || s.title || ('Subject ' + s.id);
+    subjectSelect.appendChild(opt);
+  });
+
+  // Instructors
+  instructors.forEach(i => {
+    const opt = document.createElement('option');
+    opt.value = i.id;
+    opt.textContent = i.name || i.email || ('Instructor ' + i.id);
+    instructorSelect.appendChild(opt);
+  });
 }
+
+let subjectReportButtonBound = false;
+
+function updateSubjectReportUI() {
+  const subjectSelect = document.getElementById('reportSubjectSelect');
+  const instructorSelect = document.getElementById('reportInstructorSelect');
+  if (!subjectSelect || !instructorSelect) return;
+  populateSubjectReportFilters();
+  wireSubjectReportButton();
+}
+
+function wireSubjectReportButton() {
+  if (subjectReportButtonBound) return;
+  const btn = document.getElementById('generateSubjectReportBtn');
+  if (!btn) return;
+  btn.addEventListener('click', generateSubjectReport);
+  subjectReportButtonBound = true;
+}
+
 function generateSubjectReport() {
-  const subjectSelect = document.getElementById("reportSubjectSelect");
-  const instructorSelect = document.getElementById("reportInstructorSelect");
-  const tbody = document.querySelector("#subjectReportTable tbody");
+  const subjectSelect = document.getElementById('reportSubjectSelect');
+  const instructorSelect = document.getElementById('reportInstructorSelect');
+  const tbody = document.querySelector('#subjectReportTable tbody');
 
   if (!subjectSelect || !instructorSelect || !tbody) return;
 
-  const selectedSubjectId = subjectSelect.value;
-  const selectedInstructorId = instructorSelect.value;
+  const subjects = state.subjects || [];
+  const instructors = state.instructors || [];
+  const topics = state.topics || [];
 
-  const subject = subjects.find(s => s.id === selectedSubjectId);
+  const selectedSubjectId = subjectSelect.value;
+  const selectedInstructorId = instructorSelect.value; // 'all' or specific id
+
+  const subject = subjects.find(s => String(s.id) === String(selectedSubjectId));
   if (!subject) {
-    alert("Please select a subject.");
+    alert('Please select a subject.');
     return;
   }
 
-  const requiredHours = Number(subject.requiredHours || 0);
+  const requiredHours = Number(subject.total_hours || 0);
 
-  // Filter lessons (topics)
-  const filteredTopics = (topics || []).filter(t => {
-    if (t.subjectId !== selectedSubjectId) return false;
-    if (selectedInstructorId !== "all" && t.instructorId !== selectedInstructorId) return false;
+  const isAdmin = (mode === 'supabase') ? !!state.profile?.is_admin : !!state.user?.is_admin;
+  const myId = (mode === 'supabase' ? state.profile?.id : state.user?.id);
+
+  const visibleTopics = isAdmin
+    ? topics
+    : topics.filter(t => t.instructor_id === myId);
+
+  const filtered = visibleTopics.filter(t => {
+    if (String(t.subject_id) !== String(selectedSubjectId)) return false;
+    if (selectedInstructorId !== 'all' && String(t.instructor_id) !== String(selectedInstructorId)) return false;
     return true;
   });
 
   const deliveredByInstructor = {};
   let totalDelivered = 0;
 
-  filteredTopics.forEach(t => {
-    const hrs = Number(t.hours) || 0;
-    if (!deliveredByInstructor[t.instructorId]) deliveredByInstructor[t.instructorId] = 0;
-    deliveredByInstructor[t.instructorId] += hrs;
+  filtered.forEach(t => {
+    const hrs = Number(t.duration_hours || t.hours || 0);
+    const instId = t.instructor_id;
+    if (!deliveredByInstructor[instId]) deliveredByInstructor[instId] = 0;
+    deliveredByInstructor[instId] += hrs;
     totalDelivered += hrs;
   });
 
-  tbody.innerHTML = "";
+  // Clear old rows
+  tbody.innerHTML = '';
 
-  Object.keys(deliveredByInstructor).forEach(id => {
-    const inst = instructors.find(i => i.id === id);
-    const instructorName = inst ? inst.name : "(Unknown)";
-    const delivered = deliveredByInstructor[id];
+  Object.keys(deliveredByInstructor).forEach(instId => {
+    const inst = instructors.find(i => String(i.id) === String(instId));
+    const instructorName = inst ? (inst.name || inst.email || ('Instructor ' + instId)) : '(Unknown)';
+    const delivered = deliveredByInstructor[instId];
     const remaining = Math.max(requiredHours - delivered, 0);
 
-    const tr = document.createElement("tr");
+    const tr = document.createElement('tr');
     tr.innerHTML = `
-      <td>${subject.name}</td>
+      <td>${subject.name || subject.title || subject.id}</td>
       <td>${instructorName}</td>
       <td>${requiredHours}</td>
-      <td>${delivered}</td>
-      <td>${remaining}</td>
+      <td>${delivered.toFixed(1)}</td>
+      <td>${remaining.toFixed(1)}</td>
     `;
     tbody.appendChild(tr);
   });
 
-  if (selectedInstructorId === "all") {
-    const remaining = Math.max(requiredHours - totalDelivered, 0);
-    const tr = document.createElement("tr");
-    tr.innerHTML = `
-      <td><strong>${subject.name}</strong></td>
+  if (selectedInstructorId === 'all') {
+    const remainingAll = Math.max(requiredHours - totalDelivered, 0);
+    const trTotal = document.createElement('tr');
+    trTotal.innerHTML = `
+      <td><strong>${subject.name || subject.title || subject.id}</strong></td>
       <td><strong>Total (All)</strong></td>
       <td><strong>${requiredHours}</strong></td>
-      <td><strong>${totalDelivered}</strong></td>
-      <td><strong>${remaining}</strong></td>
+      <td><strong>${totalDelivered.toFixed(1)}</strong></td>
+      <td><strong>${remainingAll.toFixed(1)}</strong></td>
     `;
-    tbody.appendChild(tr);
+    tbody.appendChild(trTotal);
+  }
+
+  if (!filtered.length) {
+    const trEmpty = document.createElement('tr');
+    trEmpty.innerHTML = '<td colspan="5" class="muted">No delivered hours yet for this subject/instructor.</td>';
+    tbody.appendChild(trEmpty);
   }
 }
-document.addEventListener("DOMContentLoaded", () => {
-  populateReportFilters();
-
-  const btn = document.getElementById("generateSubjectReportBtn");
-  if (btn) btn.addEventListener("click", generateSubjectReport);
-});
