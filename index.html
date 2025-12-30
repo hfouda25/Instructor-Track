@@ -170,41 +170,47 @@
           <div id="hoursSummary"></div>
         </div>
      <section id="subject-report-section">
-  <h2>Subject Report</h2>
+ <h2>Subject Report</h2>
 
-  <div class="report-filters">
-    <label>
-      Subject:
-      <select id="reportSubjectSelect">
-        <!-- options will be filled by JS -->
-      </select>
-    </label>
+<div class="subject-report card">
+  <div class="subject-report-controls no-print">
+    <div class="form-row">
+      <label for="reportSubjectSelect">Subject:</label>
+      <select id="reportSubjectSelect"></select>
+    </div>
 
-    <label>
-      Instructor:
+    <div class="form-row">
+      <label for="reportInstructorSelect">Instructor:</label>
       <select id="reportInstructorSelect">
         <option value="all">All instructors</option>
-        <!-- options will be filled by JS -->
       </select>
-    </label>
+    </div>
 
-    <button id="generateSubjectReportBtn">Generate Report</button>
+    <button id="generateSubjectReportBtn" class="btn">
+      Generate Report
+    </button>
   </div>
 
-  <table id="subjectReportTable">
+  <table id="subjectReportTable" class="table table-subject-report">
     <thead>
       <tr>
         <th>Subject</th>
         <th>Instructor</th>
         <th>Total Required Hours</th>
-        <th>Delivered Hours</th>
+        <th>Hours Delivered</th>
         <th>Remaining Hours</th>
       </tr>
     </thead>
     <tbody>
-      <!-- JS will inject rows here -->
+      <tr>
+        <td colspan="5" class="muted">
+          Select a subject and click "Generate Report".
+        </td>
+      </tr>
     </tbody>
   </table>
+</div>
+
 </section>
 
       </section>
