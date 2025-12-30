@@ -34,12 +34,94 @@ body { margin:0; font-family: system-ui, -apple-system, Segoe UI, Roboto, Arial,
 .scroll { max-height:360px; overflow:auto; }
 .split { display:flex; align-items:center; gap:10px; flex-wrap:wrap; justify-content:space-between; }
 #subjList, #topicList { font-size:14px; color:var(--muted); }
+/* =========================
+   SUBJECT REPORT STYLING
+   ========================= */
 
-/* Report table styling */
-.table { width:100%; border-collapse: collapse; }
-.table th, .table td { border:1px solid #e2e8f0; padding:8px; text-align:left; }
-.table thead th { background:#f1f5f9; }
-@media print {
-  .table th, .table td { border:1px solid #000; }
-  .table thead th { background:#fff; }
+.subject-report {
+  margin-top: 2rem;
 }
+
+/* Filters layout */
+.subject-report-controls {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 1rem;
+  align-items: flex-end;
+  margin-bottom: 1rem;
+}
+
+.subject-report-controls .form-row {
+  display: flex;
+  flex-direction: column;
+  min-width: 160px;
+}
+
+/* Table formatting */
+.table-subject-report {
+  width: 100%;
+  border-collapse: collapse;
+  margin-top: 0.5rem;
+}
+
+.table-subject-report caption.subject-report-caption {
+  caption-side: top;
+  text-align: left;
+  font-weight: 600;
+  margin-bottom: 0.25rem;
+}
+
+.table-subject-report th,
+.table-subject-report td {
+  border: 1px solid #ddd;
+  padding: 6px 8px;
+  font-size: 0.9rem;
+}
+
+/* Header */
+.table-subject-report th {
+  background: #f5f5f5;
+  text-align: left;
+}
+
+/* Zebra rows */
+.table-subject-report tbody tr:nth-child(odd) {
+  background: #fafafa;
+}
+
+/* Align hour columns */
+.table-subject-report td:nth-child(3),
+.table-subject-report td:nth-child(4),
+.table-subject-report td:nth-child(5) {
+  text-align: right;
+}
+
+/* =========================
+   PRINT MODE
+   ========================= */
+@media print {
+  body {
+    background: #fff;
+    font-size: 10pt;
+  }
+
+  /* Hide UI controls when printing */
+  .no-print,
+  .no-print * {
+    display: none !important;
+  }
+
+  .table-subject-report th,
+  .table-subject-report td {
+    border: 1px solid #000;
+    padding: 4px 6px;
+    font-size: 9pt;
+  }
+
+  .table-subject-report caption.subject-report-caption {
+    font-size: 11pt;
+    font-weight: 700;
+    margin-bottom: 4px;
+  }
+}
+
