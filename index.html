@@ -1,0 +1,178 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Instructors Control</title>
+  <link rel="stylesheet" href="./styles.css"/>
+  <script defer src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.min.js"></script>
+  <script defer src="./app.js"></script>
+  <style>
+    @media print {
+      header.topbar, .tabs, .footer, .no-print, .btn { display: none !important; }
+      .card { border: none; }
+      body { background: white; }
+    }
+  </style>
+</head>
+<body>
+  <header class="topbar">
+    <div class="brand">Instructors Control</div>
+    <div class="right">
+      <a class="link small" href="./settings.html">Settings</a>
+      <span id="modeBadge" class="badge"></span>
+      <span id="whoBadge" class="badge">Not signed in</span>
+      <button id="btnSignOut" class="btn small hide">Sign out</button>
+    </div>
+  </header>
+
+  <main class="wrap">
+    <section id="authSection" class="card">
+      <h2>Sign in</h2>
+      <div class="grid2">
+        <div>
+          <label>Email</label>
+          <input id="email" type="email" class="in" placeholder="name@aamaritime.gy"/>
+        </div>
+        <div>
+          <label>Password</label>
+          <input id="password" type="password" class="in" placeholder="••••••••"/>
+        </div>
+      </div>
+      <div class="row">
+        <button id="btnSignIn" class="btn primary">Sign in</button>
+        <button id="btnSignUp" class="btn hide">Create account</button>
+      </div>
+    </section>
+
+    <section id="appSection" class="hide">
+      <div class="tabs">
+        <button class="tab active" data-tab="calendar">Calendar</button>
+        <button class="tab" data-tab="instructor">Instructor</button>
+        <button class="tab" data-tab="admin">Admin</button>
+        <button class="tab" data-tab="reports">Reports</button>
+      </div>
+
+      <section id="tab_calendar" class="tabpane">
+        <div class="row2">
+          <div class="card">
+            <div class="split">
+              <div class="title">Calendar</div>
+              <div class="split no-print">
+                <button id="prevMonth" class="btn small">◀</button>
+                <div id="monthTitle" class="muted"></div>
+                <button id="nextMonth" class="btn small">▶</button>
+              </div>
+            </div>
+            <div id="calDow" class="dow"></div>
+            <div id="calGrid" class="calgrid"></div>
+          </div>
+          <div class="card">
+            <div class="title">Day details</div>
+            <div class="muted" id="dayTitle"></div>
+            <div class="scroll">
+              <table class="table" id="dayTable">
+                <thead><tr><th>Done</th><th>Time</th><th>Subject</th><th>Topic</th><th>Instructor</th><th>Hours</th></tr></thead>
+                <tbody id="dayTbody"></tbody>
+              </table>
+            </div>
+            <div id="noClasses" class="muted">No classes on this date.</div>
+          </div>
+        </div>
+      </section>
+
+      <section id="tab_instructor" class="tabpane hide">
+        <div class="card">
+          <div class="title">My schedule (today)</div>
+          <div id="mySchedule"></div>
+        </div>
+      </section>
+
+      <section id="tab_admin" class="tabpane hide">
+        <div id="adminOnly" class="hide">
+          <div class="card">
+            <div class="title">Add Instructor Profile</div>
+            <div class="grid2">
+              <div><label>Name</label><input id="instName" class="in" placeholder="Full name"/></div>
+              <div><label>User (email)</label><input id="instEmail" type="email" class="in" placeholder="user@aamaritime.gy"/></div>
+            </div>
+            <div class="row"><button id="btnCreateInstructor" class="btn primary">Create instructor profile</button></div>
+          </div>
+
+          <div class="card">
+            <div class="title">Users & Passwords (Admin‑only)</div>
+            <div id="demoUsersPanel" class="small muted">Visible in Demo Mode only.</div>
+            <div class="grid3" style="margin-top:8px;">
+              <div><label>User</label><select id="pwUser" class="in"></select></div>
+              <div><label>New password</label><input id="pwNew" class="in" type="password" placeholder="Set new password"/></div>
+              <div style="display:flex;align-items:end;"><button id="btnSetPw" class="btn">Set password</button></div>
+            </div>
+          </div>
+
+          <div class="row2">
+            <div class="card">
+              <div class="title">Subjects</div>
+              <div class="grid3">
+                <div><label>Name</label><input id="subjName" class="in" placeholder="Subject name"/></div>
+                <div><label>Total hours</label><input id="subjHours" class="in" type="number" step="0.5" min="0"/></div>
+                <div style="display:flex;align-items:end;"><button id="btnAddSubject" class="btn primary">Add subject</button></div>
+              </div>
+              <div id="subjList"></div>
+            </div>
+
+            <div class="card">
+              <div class="title">Assign Subject to Instructor</div>
+              <div class="grid3">
+                <div><label>Subject</label><select id="asgnSubject" class="in"></select></div>
+                <div><label>Instructor</label><select id="asgnInstructor" class="in"></select></div>
+                <div style="display:flex;align-items:end;"><button id="btnAssign" class="btn">Assign</button></div>
+              </div>
+            </div>
+          </div>
+
+          <div class="card">
+            <div class="title">Add Topic (timetable)</div>
+            <div class="grid4">
+              <div><label>Subject</label><select id="topicSubject" class="in"></select></div>
+              <div><label>Instructor</label><select id="topicInstructor" class="in"></select></div>
+              <div><label>Date</label><input id="topicDate" type="date" class="in"/></div>
+              <div><label>Hours</label><input id="topicHours" type="number" step="0.5" min="0" class="in" value="1"/></div>
+            </div>
+            <div class="grid3">
+              <div><label>Start (opt)</label><input id="topicStart" type="time" class="in"/></div>
+              <div><label>End (opt)</label><input id="topicEnd" type="time" class="in"/></div>
+              <div><label>Topic title</label><input id="topicTitle" class="in" placeholder="e.g., Mercator Sailing"/></div>
+            </div>
+            <div class="row"><button id="btnAddTopic" class="btn primary">Add topic</button></div>
+            <div id="topicList"></div>
+          </div>
+
+          <div class="card no-print">
+            <div class="title">Backup</div>
+            <div class="row">
+              <button id="btnExport" class="btn">Export backup (.json)</button>
+              <label class="btn" for="fileImport">Import backup (.json)</label>
+              <input id="fileImport" type="file" accept="application/json" style="display:none"/>
+            </div>
+            <div class="small muted">Backups work only in Demo Mode (local data). When connected to Supabase, data lives in the cloud.</div>
+          </div>
+
+        </div>
+        <div id="adminBlock" class="card warn">You are not an admin. Admins see this tab.</div>
+      </section>
+
+      <section id="tab_reports" class="tabpane hide">
+        <div class="card">
+          <div class="split">
+            <div class="title">Hours Summary</div>
+            <button id="btnPrint" class="btn no-print">Print</button>
+          </div>
+          <div id="hoursSummary"></div>
+        </div>
+      </section>
+    </section>
+  </main>
+
+  <footer class="footer small">© AA Maritime</footer>
+</body>
+</html>

@@ -1,0 +1,52 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Settings – AA Maritime</title>
+  <link rel="stylesheet" href="./styles.css"/>
+  <script>
+    function $(s){return document.querySelector(s)}
+    const U='aa_supabase_url', K='aa_supabase_key';
+    document.addEventListener('DOMContentLoaded', ()=>{
+      $('#url').value = localStorage.getItem(U)||'';
+      $('#key').value = localStorage.getItem(K)||'';
+      $('#save').onclick = ()=>{
+        localStorage.setItem(U, $('#url').value.trim());
+        localStorage.setItem(K, $('#key').value.trim());
+        alert('Saved. Refresh home page to use Supabase.');
+      };
+      $('#clear').onclick = ()=>{
+        localStorage.removeItem(U); localStorage.removeItem(K);
+        alert('Cleared. App will run in Demo Mode.');
+      };
+    });
+  </script>
+</head>
+<body>
+  <header class="topbar">
+    <div class="brand">Settings – AA Maritime</div>
+    <div class="right"><a class="link" href="./index.html">← Back</a></div>
+  </header>
+  <main class="wrap">
+    <section class="card">
+      <div class="title">Connection</div>
+      <p class="muted">Leave these empty to keep <b>Demo Mode</b> (local data). Fill to use Supabase.</p>
+      <div class="grid2">
+        <div>
+          <label>Supabase Project URL</label>
+          <input id="url" class="in" placeholder="https://xxxx.supabase.co"/>
+        </div>
+        <div>
+          <label>Anon public key</label>
+          <input id="key" class="in" placeholder="eyJhbGciOi..."/>
+        </div>
+      </div>
+      <div class="row">
+        <button id="save" class="btn primary">Save</button>
+        <button id="clear" class="btn">Clear</button>
+      </div>
+    </section>
+  </main>
+</body>
+</html>
