@@ -1,7 +1,7 @@
 // Demo Mode + optional Supabase Mode, with @aamaritime.gy users
-const CFG_URL_KEY = 'aa_supabase_url';
-const CFG_ANON_KEY = 'aa_supabase_key';
-const DEMO_LS_KEY = 'aa_demo_data_v2';
+const SUPABASE_URL = 'https://wjszrzxuvxtusslfgvuwd.supabase.co';
+const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Indqc3pyenh1eHV0c3NsZmd2dXdkIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjI1MzM1NTEsImV4cCI6MjA3ODEwOTU1MX0.5YmUUEeuRwYI5YyWxLTs1l2Z-IGrlcWatq8oZtkN4Uk';
+const mode = 'supabase';
 
 function getConfig() {
   return { url: localStorage.getItem(CFG_URL_KEY) || '', key: localStorage.getItem(CFG_ANON_KEY) || '' };
