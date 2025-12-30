@@ -575,6 +575,25 @@ function enforceTodayCompletion(topic){
   if(topic.completed && d!==today){ topic.completed=false; }
 }
 
+function populateReportFilters() {
+  const subjectSelect = document.getElementById("reportSubjectSelect");
+  const instructorSelect = document.getElementById("reportInstructorSelect");
+
+  if (!subjectSelect || !instructorSelect) return;
+
+  // Clear first
+  subjectSelect.innerHTML = "";
+  instructorSelect.innerHTML = `<option value="all">All instructors</option>`;
+
+  // Subjects list must already exist in your app
+  if (window.subjects && Array.isArray(subjects)) {
+    subjects.forEach(subj => {
+      const opt = document.createElement("option");
+      opt.value = subj.id;
+      opt.textContent = subj.name;
+      subjectSelect.appendChild(opt);
+    });
+  }
 
   // Instructors list must already exist in your app
   if (window.instructors && Array.isArray(instructors)) {
@@ -586,7 +605,21 @@ function enforceTodayCompletion(topic){
     });
   }
 }
+function generateSubjectReport() {
+  const subjectSelect = document.getElementById("reportSubjectSelect");
+  const instructorSelect = document.getElementById("reportInstructorSelect");
+  const tbody = document.querySelector("#subjectReportTable tbody");
 
+  if (!subjectSelect || !instructorSelect || !tbody) return;
+
+  const selectedSubjectId = subjectSelect.value;
+  const selectedInstructorId = instructorSelect.value;
+
+  const subject = subjects.find(s => s.id === selectedSubjectId);
+  if (!subject) {
+    alert("Please select a subject.");
+    return;
+  }
 
   const requiredHours = Number(subject.requiredHours || 0);
 
@@ -639,122 +672,9 @@ function enforceTodayCompletion(topic){
     tbody.appendChild(tr);
   }
 }
-
-// Helper to read current local DB (demo mode)
-function getCurrentDb() {
-  if (typeof readDemo === "function") {
-    return readDemo() || {};
-  }
-  return {};
-}
-function populateReportFilters() {
-  const subjectSelect = document.getElementById("reportSubjectSelect");
-  const instructorSelect = document.getElementById("reportInstructorSelect");
-
-  if (!subjectSelect || !instructorSelect) return;
-
-  const db = getCurrentDb();
-  const subjects = db.subjects || [];
-  const instructors = db.instructors || [];
-
-  // Clear existing
-  subjectSelect.innerHTML = "";
-  instructorSelect.innerHTML = '<option value="all">All instructors</option>';
-
-  // Subjects
-  subjects.forEach(s => {
-    const opt = document.createElement("option");
-    opt.value = s.id;
-    opt.textContent = s.name || s.title || "Subject " + s.id;
-    subjectSelect.appendChild(opt);
-  });
-
-  // Instructors
-  instructors.forEach(i => {
-    const opt = document.createElement("option");
-    opt.value = i.id;
-    opt.textContent = i.name || i.full_name || "Instructor " + i.id;
-    instructorSelect.appendChild(opt);
-  });
-}
-function generateSubjectReport() {
-  const subjectSelect = document.getElementById("reportSubjectSelect");
-  const instructorSelect = document.getElementById("reportInstructorSelect");
-  const tbody = document.querySelector("#subjectReportTable tbody");
-
-  if (!subjectSelect || !instructorSelect || !tbody) return;
-
-  const db = getCurrentDb();
-  const subjects = db.subjects || [];
-  const instructors = db.instructors || [];
-  const topics = db.topics || [];
-
-  const selectedSubjectId = subjectSelect.value;
-  const selectedInstructorId = instructorSelect.value;
-
-  const subject = subjects.find(s => String(s.id) === String(selectedSubjectId));
-  if (!subject) {
-    alert("Please select a subject.");
-    return;
-  }
-
-  const requiredHours = Number(subject.total_hours || 0);
-
-  // Filter lessons
-  const filteredTopics = topics.filter(t => {
-    if (String(t.subject_id) !== String(selectedSubjectId)) return false;
-    if (selectedInstructorId !== "all" && String(t.instructor_id) !== String(selectedInstructorId)) return false;
-    return true;
-  });
-
-  const deliveredByInstructor = {};
-  let totalDelivered = 0;
-
-  filteredTopics.forEach(t => {
-    const hrs = Number(t.hours || t.duration_hours || 0);
-    const instId = t.instructor_id;
-
-    if (!deliveredByInstructor[instId]) deliveredByInstructor[instId] = 0;
-    deliveredByInstructor[instId] += hrs;
-    totalDelivered += hrs;
-  });
-
-  tbody.innerHTML = "";
-
-  Object.keys(deliveredByInstructor).forEach(instId => {
-    const inst = instructors.find(i => String(i.id) === String(instId));
-    const instructorName = inst ? (inst.name || inst.full_name) : "(Unknown)";
-    const delivered = deliveredByInstructor[instId];
-    const remaining = Math.max(requiredHours - delivered, 0);
-
-    const tr = document.createElement("tr");
-    tr.innerHTML = `
-      <td>${subject.name || subject.title || subject.id}</td>
-      <td>${instructorName}</td>
-      <td>${requiredHours}</td>
-      <td>${delivered}</td>
-      <td>${remaining}</td>
-    `;
-    tbody.appendChild(tr);
-  });
-
-  if (selectedInstructorId === "all") {
-    const remaining = Math.max(requiredHours - totalDelivered, 0);
-    const tr = document.createElement("tr");
-    tr.innerHTML = `
-      <td><strong>${subject.name || subject.title || subject.id}</strong></td>
-      <td><strong>Total (All)</strong></td>
-      <td><strong>${requiredHours}</strong></td>
-      <td><strong>${totalDelivered}</strong></td>
-      <td><strong>${remaining}</strong></td>
-    `;
-    tbody.appendChild(tr);
-  }
-}
-document.addEventListener("DOMContentLoaded", function () {
+document.addEventListener("DOMContentLoaded", () => {
   populateReportFilters();
 
   const btn = document.getElementById("generateSubjectReportBtn");
   if (btn) btn.addEventListener("click", generateSubjectReport);
 });
-
