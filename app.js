@@ -430,7 +430,7 @@ function importBackup(evt){
 
 // ---------- REPORTS ----------
 function renderReports() {
-  // ----- existing Hours Summary logic -----
+  // Hours Summary table
   const isAdmin = (mode === 'supabase')
     ? !!state.profile?.is_admin
     : !!state.user?.is_admin;
@@ -474,129 +474,9 @@ function renderReports() {
   document.getElementById('hoursSummary').innerHTML =
     head + body + '</tbody></table>';
 
-  // ----- NEW: Subject Report -----
-  const subjectSelect = document.getElementById('reportSubjectSelect');
-  const instructorSelect = document.getElementById('reportInstructorSelect');
-  const reportBody = document.querySelector('#subjectReportTable tbody');
-  const btn = document.getElementById('generateSubjectReportBtn');
-
-  // If HTML is not present, nothing to do
-  if (!subjectSelect || !instructorSelect || !reportBody || !btn) return;
-
-  // Populate Subject dropdown
-  subjectSelect.innerHTML = '';
-  (state.subjects || []).forEach(s => {
-    const opt = document.createElement('option');
-    opt.value = s.id;
-    opt.textContent = s.name || s.title || ('Subject ' + s.id);
-    subjectSelect.appendChild(opt);
-  });
-
-  // Populate Instructor dropdown
-  instructorSelect.innerHTML = '<option value="all">All instructors</option>';
-  (state.instructors || []).forEach(i => {
-    const opt = document.createElement('option');
-    opt.value = i.id;
-    opt.textContent = i.name || i.email || ('Instructor ' + i.id);
-    instructorSelect.appendChild(opt);
-  });
-
-  // Click handler (re-assigned each time renderReports runs – this is OK)
-  btn.onclick = function () {
-    const subjectId = subjectSelect.value;
-    const instructorId = instructorSelect.value; // "all" or id
-
-    if (!subjectId) {
-      alert('Please select a subject.');
-      return;
-    }
-
-    const subject = (state.subjects || []).find(s => String(s.id) === String(subjectId));
-    if (!subject) {
-      alert('Subject not found.');
-      return;
-    }
-
-    const requiredHours = Number(subject.total_hours || 0);
-
-    // Respect admin / instructor visibility
-    const visibleTopics = isAdmin
-      ? (state.topics || [])
-      : (state.topics || []).filter(t => t.instructor_id === myId);
-
-    // Filter topics for this subject (+ instructor if not "all")
-    const filtered = visibleTopics.filter(t => {
-      if (String(t.subject_id) !== String(subjectId)) return false;
-      if (instructorId !== 'all' && String(t.instructor_id) !== String(instructorId)) return false;
-      return true;
-    });
-
-    const deliveredByInstructor = {};
-    let totalDelivered = 0;
-
-    filtered.forEach(t => {
-      const hrs = Number(t.duration_hours || t.hours || 0);
-      const instId = t.instructor_id;
-      if (!deliveredByInstructor[instId]) deliveredByInstructor[instId] = 0;
-      deliveredByInstructor[instId] += hrs;
-      totalDelivered += hrs;
-    });
-
-    // Clear previous rows
-    reportBody.innerHTML = '';
-
-    Object.keys(deliveredByInstructor).forEach(instId => {
-      const inst = (state.instructors || []).find(i => String(i.id) === String(instId));
-      const instructorName = inst ? (inst.name || inst.email || ('Instructor ' + instId)) : '(Unknown)';
-      const delivered = deliveredByInstructor[instId];
-      const remaining = Math.max(requiredHours - delivered, 0);
-
-      const tr = document.createElement('tr');
-      tr.innerHTML = `
-        <td>${subject.name || subject.title || subject.id}</td>
-        <td>${instructorName}</td>
-        <td>${requiredHours}</td>
-        <td>${delivered.toFixed(1)}</td>
-        <td>${remaining.toFixed(1)}</td>
-      `;
-      reportBody.appendChild(tr);
-    });
-
-    // Total row when "All instructors"
-    if (instructorId === 'all') {
-      const remainingAll = Math.max(requiredHours - totalDelivered, 0);
-      const trTotal = document.createElement('tr');
-      trTotal.innerHTML = `
-        <td><strong>${subject.name || subject.title || subject.id}</strong></td>
-        <td><strong>Total (All)</strong></td>
-        <td><strong>${requiredHours}</strong></td>
-        <td><strong>${totalDelivered.toFixed(1)}</strong></td>
-        <td><strong>${remainingAll.toFixed(1)}</strong></td>
-      `;
-      reportBody.appendChild(trTotal);
-    }
-
-    // If no topics matched
-    if (!filtered.length) {
-      const trEmpty = document.createElement('tr');
-      trEmpty.innerHTML = `
-        <td colspan="5" class="muted">
-          No delivered hours yet for this subject / instructor.
-        </td>
-      `;
-      reportBody.appendChild(trEmpty);
-    }
-  };
-}
-
-
-  $('#hoursSummary').innerHTML = head + body + '</tbody></table>';
-
-  // Also update Subject Report filters when Reports tab renders
+  // Update Subject Report dropdowns when Reports tab renders
   updateSubjectReportUI();
 }
-
-// Instructor management (Demo Mode only)
 
 // Topic management (Demo & Supabase)
 document.addEventListener('click', function(e){
@@ -649,7 +529,7 @@ async function deleteTopic(id){
   }
 }
 
-
+// Instructor management (Demo Mode only)
 document.addEventListener('click', function(e){
   const btn = e.target.closest('[data-act]'); if (!btn) return;
   const act = btn.getAttribute('data-act');
@@ -664,7 +544,8 @@ function editInstructorName(userId){
   const db = readDemo(); const u = (db.users||[]).find(x=>x.id===userId && !x.is_admin);
   if (!u) return alert('Instructor not found.');
   const nn = prompt('New instructor name:', u.name); if (!nn) return;
-  u.name = nn.trim(); writeDemo(db); loadData().then(()=>{ renderAdmin(); renderCalendar(); });
+  u.name = nn.trim(); writeDemo(db);
+  loadAllData().then(()=>{ renderAdmin(); renderCalendar(); });
 }
 function deleteInstructor(userId){
   if (mode!=='demo') return alert('Delete available in local mode.');
@@ -674,7 +555,8 @@ function deleteInstructor(userId){
   db.users = (db.users||[]).filter(x=>x.id!==userId);
   db.topics = (db.topics||[]).filter(t=>t.instructor_id!==userId);
   db.assignments = (db.assignments||[]).filter(a=>a.instructor_id!==userId);
-  writeDemo(db); loadData().then(()=>{ renderAdmin(); renderCalendar(); });
+  writeDemo(db);
+  loadAllData().then(()=>{ renderAdmin(); renderCalendar(); });
 }
 
 // Subject management (Demo Mode)
