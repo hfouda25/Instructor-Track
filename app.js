@@ -574,3 +574,107 @@ function enforceTodayCompletion(topic){
   const d=(topic.date||"").slice(0,10);
   if(topic.completed && d!==today){ topic.completed=false; }
 }
+
+function populateReportFilters() {
+  const subjectSelect = document.getElementById("reportSubjectSelect");
+  const instructorSelect = document.getElementById("reportInstructorSelect");
+
+  if (!subjectSelect || !instructorSelect) return;
+
+  // Clear first
+  subjectSelect.innerHTML = "";
+  instructorSelect.innerHTML = `<option value="all">All instructors</option>`;
+
+  // Subjects list must already exist in your app
+  if (window.subjects && Array.isArray(subjects)) {
+    subjects.forEach(subj => {
+      const opt = document.createElement("option");
+      opt.value = subj.id;
+      opt.textContent = subj.name;
+      subjectSelect.appendChild(opt);
+    });
+  }
+
+  // Instructors list must already exist in your app
+  if (window.instructors && Array.isArray(instructors)) {
+    instructors.forEach(inst => {
+      const opt = document.createElement("option");
+      opt.value = inst.id;
+      opt.textContent = inst.name;
+      instructorSelect.appendChild(opt);
+    });
+  }
+}
+function generateSubjectReport() {
+  const subjectSelect = document.getElementById("reportSubjectSelect");
+  const instructorSelect = document.getElementById("reportInstructorSelect");
+  const tbody = document.querySelector("#subjectReportTable tbody");
+
+  if (!subjectSelect || !instructorSelect || !tbody) return;
+
+  const selectedSubjectId = subjectSelect.value;
+  const selectedInstructorId = instructorSelect.value;
+
+  const subject = subjects.find(s => s.id === selectedSubjectId);
+  if (!subject) {
+    alert("Please select a subject.");
+    return;
+  }
+
+  const requiredHours = Number(subject.requiredHours || 0);
+
+  // Filter lessons (topics)
+  const filteredTopics = (topics || []).filter(t => {
+    if (t.subjectId !== selectedSubjectId) return false;
+    if (selectedInstructorId !== "all" && t.instructorId !== selectedInstructorId) return false;
+    return true;
+  });
+
+  const deliveredByInstructor = {};
+  let totalDelivered = 0;
+
+  filteredTopics.forEach(t => {
+    const hrs = Number(t.hours) || 0;
+    if (!deliveredByInstructor[t.instructorId]) deliveredByInstructor[t.instructorId] = 0;
+    deliveredByInstructor[t.instructorId] += hrs;
+    totalDelivered += hrs;
+  });
+
+  tbody.innerHTML = "";
+
+  Object.keys(deliveredByInstructor).forEach(id => {
+    const inst = instructors.find(i => i.id === id);
+    const instructorName = inst ? inst.name : "(Unknown)";
+    const delivered = deliveredByInstructor[id];
+    const remaining = Math.max(requiredHours - delivered, 0);
+
+    const tr = document.createElement("tr");
+    tr.innerHTML = `
+      <td>${subject.name}</td>
+      <td>${instructorName}</td>
+      <td>${requiredHours}</td>
+      <td>${delivered}</td>
+      <td>${remaining}</td>
+    `;
+    tbody.appendChild(tr);
+  });
+
+  if (selectedInstructorId === "all") {
+    const remaining = Math.max(requiredHours - totalDelivered, 0);
+    const tr = document.createElement("tr");
+    tr.innerHTML = `
+      <td><strong>${subject.name}</strong></td>
+      <td><strong>Total (All)</strong></td>
+      <td><strong>${requiredHours}</strong></td>
+      <td><strong>${totalDelivered}</strong></td>
+      <td><strong>${remaining}</strong></td>
+    `;
+    tbody.appendChild(tr);
+  }
+}
+document.addEventListener("DOMContentLoaded", () => {
+  populateReportFilters();
+
+  const btn = document.getElementById("generateSubjectReportBtn");
+  if (btn) btn.addEventListener("click", generateSubjectReport);
+});
