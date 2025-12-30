@@ -1,19 +1,48 @@
 // Demo Mode + optional Supabase Mode, with @aamaritime.gy users
-const SUPABASE_URL = 'https://wjszrzxuvxtusslfgvuwd.supabase.co';
-const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Indqc3pyenh1eHV0c3NsZmd2dXdkIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjI1MzM1NTEsImV4cCI6MjA3ODEwOTU1MX0.5YmUUEeuRwYI5YyWxLTs1l2Z-IGrlcWatq8oZtkN4Uk';
-const mode = 'supabase';
+// *** Put your project URL and ANON PUBLIC KEY here ***
+const SUPABASE_URL = 'https://wjszrzxuxutsslfgvuwd.supabase.co';   // <-- your project URL
+const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Indqc3pyenh1eHV0c3NsZmd2dXdkIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjI1MzM1NTEsImV4cCI6MjA3ODEwOTU1MX0.5YmUUEeuRwYI5YyWxLTs1l2Z-IGrlcWatq8oZtkN4Uk'; // <-- your anon public key
 
-function getConfig() {
-  return { url: localStorage.getItem(CFG_URL_KEY) || '', key: localStorage.getItem(CFG_ANON_KEY) || '' };
-}
-function setBadge(text){ document.getElementById('modeBadge').textContent = text; }
+// Keys to store config in browser (Settings tab)
+const CFG_URL_KEY = 'itt_supabase_url';
+const CFG_ANON_KEY = 'itt_supabase_anon_key';
+
+// Start in demo; will switch to "supabase" only when URL+key are valid
+let mode = 'demo';
 let supabaseClient = null;
-let mode = 'demo'; // 'demo' or 'supabase'
 
+// Read config (first from localStorage, fallback to hard-coded constants)
+function getConfig() {
+  const url = localStorage.getItem(CFG_URL_KEY) || SUPABASE_URL || '';
+  const key = localStorage.getItem(CFG_ANON_KEY) || SUPABASE_ANON_KEY || '';
+  return { url, key };
+}
+
+function setBadge(text) {
+  document.getElementById('modeBadge').textContent = text;
+}
+
+// Main boot sequence
 document.addEventListener('DOMContentLoaded', async () => {
   const { url, key } = getConfig();
-  if (url && key) { mode='supabase'; supabaseClient = supabase.createClient(url,key); setBadge('Supabase'); }
-  else { seedDemo(); setBadge(''); }
+
+  if (url && key) {
+    try {
+      supabaseClient = supabase.createClient(url, key);
+      mode = 'supabase';
+      setBadge('supabase');
+    } catch (err) {
+      console.error('Supabase init failed, falling back to demo:', err);
+      mode = 'demo';
+      seedDemo();
+      setBadge('demo');
+    }
+  } else {
+    mode = 'demo';
+    seedDemo();
+    setBadge('demo');
+  }
+
   initUI();
   await initAuth();
   bindTabs();
