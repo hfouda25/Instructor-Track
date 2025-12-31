@@ -279,7 +279,18 @@ function renderInstructorToday(){
 }
 
 function renderAdmin(){
-  const isAdmin = (mode==='supabase') ? !!state.profile?.is_admin : !!state.user?.is_admin;
+ const isAdmin =
+  (mode === 'supabase')
+    ? !!(
+        // any of these makes the user admin in Supabase mode
+        state.profile?.is_admin ||
+        state.user?.user_metadata?.is_admin === true ||
+        state.user?.app_metadata?.role === 'admin' ||
+        (Array.isArray(state.user?.app_metadata?.roles) && state.user.app_metadata.roles.includes('admin')) ||
+        state.user?.email === 'admin@aamaritime.gy'
+      )
+    : !!state.user?.is_admin;
+
   $('#adminOnly').classList.toggle('hide', !isAdmin ? true : false);
   $('#adminBlock').classList.toggle('hide', isAdmin ? true : false);
   if (!isAdmin) return;
