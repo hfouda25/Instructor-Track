@@ -136,8 +136,48 @@ async function initAuth(){
 async function signIn(){
   const email = $('#email').value.trim(); const password = $('#password').value;
   if (mode==='supabase'){
-    const { error } = await supabaseClient.auth.signInWithPassword({ email, password });
-    if (error) alert(error.message);
+    if (mode==='supabase'){
+  const { data, error } = await supabaseClient.auth.signInWithPassword({
+    email,
+    password
+  });
+
+  if (error) {
+    alert(error.message);
+    return;
+  }
+
+  const user = data.user;
+
+  // get profile record
+  const { data: profiles, error: pErr } = await supabaseClient
+    .from('profiles')
+    .select('*')
+    .eq('id', user.id)
+    .limit(1);
+
+  if (pErr || !profiles || !profiles.length) {
+    alert('No profile found for this account. Contact admin.');
+    await supabaseClient.auth.signOut();
+    return;
+  }
+
+  const profile = profiles[0];
+
+  if (profile.is_active === false) {
+    alert('This account has been disabled by admin.');
+    await supabaseClient.auth.signOut();
+    return;
+  }
+
+  // save to app state
+  state.user = user;
+  state.profile = profile;
+
+  await loadAllData();
+  showApp();
+}
+
   } else {
     const db = readDemo();
     const u = (db.users||[]).find(x=>x.email.toLowerCase()===email.toLowerCase() && x.password===password);
