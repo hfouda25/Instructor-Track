@@ -175,16 +175,20 @@ async function signIn(){
   state.user = user;
   state.profile = profile;
 
-  await loadAllData();
-  showApp();
+await loadAllData();
+showApp();
+
+if (state.profile && state.profile.is_admin) {
+  loadInstructorsList();
 }
 
-  } else {
-    const db = readDemo();
-    const u = (db.users||[]).find(x=>x.email.toLowerCase()===email.toLowerCase() && x.password===password);
-    if (!u) return alert('Invalid credentials.');
-    state.user = u; state.profile = u; await loadAllData(); showApp();
-  }
+} else {
+  const db = readDemo();
+  const u = (db.users||[]).find(x=>x.email.toLowerCase()===email.toLowerCase() && x.password===password);
+  if (!u) return alert('Invalid credentials.');
+  state.user = u; state.profile = u; await loadAllData(); showApp();
+}
+
 }
 async function signUp(){
   if (mode!=='supabase') return;
