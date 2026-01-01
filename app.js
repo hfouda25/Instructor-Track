@@ -254,6 +254,3 @@ async function loadAllData(){
       state.topics = (db.topics||[]).filter(t=>t.instructor_id===state.user?.id);
   }
 }
-
-// ---------- RENDERING ----------
-… (continues — unchanged exactly from your working version)
