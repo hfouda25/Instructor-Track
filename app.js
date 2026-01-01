@@ -877,10 +877,10 @@ async function loadInstructorsList() {
     tbody.appendChild(tr);
   });
 
-  // button click handlers
+  // attach click handlers for each button
   document.querySelectorAll('.btnToggleInstructor').forEach(btn => {
     btn.addEventListener('click', async (e) => {
-      const id = e.target.getAttribute('data-id');
+      const id = e.currentTarget.getAttribute('data-id');
       await toggleInstructorActive(id);
       await loadInstructorsList();
     });
