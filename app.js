@@ -1,19 +1,48 @@
 // Demo Mode + optional Supabase Mode, with @aamaritime.gy users
-const CFG_URL_KEY = 'aa_supabase_url';
-const CFG_ANON_KEY = 'aa_supabase_key';
-const DEMO_LS_KEY = 'aa_demo_data_v2';
+// *** Put your project URL and ANON PUBLIC KEY here ***
+const SUPABASE_URL = 'https://wjszrzxuxutsslfgvuwd.supabase.co';   // <-- your project URL
+const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Indqc3pyenh1eHV0c3NsZmd2dXdkIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjI1MzM1NTEsImV4cCI6MjA3ODEwOTU1MX0.5YmUUEeuRwYI5YyWxLTs1l2Z-IGrlcWatq8oZtkN4Uk'; // <-- your anon public key
 
-function getConfig() {
-  return { url: localStorage.getItem(CFG_URL_KEY) || '', key: localStorage.getItem(CFG_ANON_KEY) || '' };
-}
-function setBadge(text){ document.getElementById('modeBadge').textContent = text; }
+// Keys to store config in browser (Settings tab)
+const CFG_URL_KEY = 'itt_supabase_url';
+const CFG_ANON_KEY = 'itt_supabase_anon_key';
+
+// Start in demo; will switch to "supabase" only when URL+key are valid
+let mode = 'demo';
 let supabaseClient = null;
-let mode = 'demo'; // 'demo' or 'supabase'
 
+// Read config (first from localStorage, fallback to hard-coded constants)
+function getConfig() {
+  const url = localStorage.getItem(CFG_URL_KEY) || SUPABASE_URL || '';
+  const key = localStorage.getItem(CFG_ANON_KEY) || SUPABASE_ANON_KEY || '';
+  return { url, key };
+}
+
+function setBadge(text) {
+  document.getElementById('modeBadge').textContent = text;
+}
+
+// Main boot sequence
 document.addEventListener('DOMContentLoaded', async () => {
   const { url, key } = getConfig();
-  if (url && key) { mode='supabase'; supabaseClient = supabase.createClient(url,key); setBadge('Supabase'); }
-  else { seedDemo(); setBadge(''); }
+
+  if (url && key) {
+    try {
+      supabaseClient = supabase.createClient(url, key);
+      mode = 'supabase';
+      setBadge('supabase');
+    } catch (err) {
+      console.error('Supabase init failed, falling back to demo:', err);
+      mode = 'demo';
+      seedDemo();
+      setBadge('demo');
+    }
+  } else {
+    mode = 'demo';
+    seedDemo();
+    setBadge('demo');
+  }
+
   initUI();
   await initAuth();
   bindTabs();
@@ -107,14 +136,59 @@ async function initAuth(){
 async function signIn(){
   const email = $('#email').value.trim(); const password = $('#password').value;
   if (mode==='supabase'){
-    const { error } = await supabaseClient.auth.signInWithPassword({ email, password });
-    if (error) alert(error.message);
-  } else {
-    const db = readDemo();
-    const u = (db.users||[]).find(x=>x.email.toLowerCase()===email.toLowerCase() && x.password===password);
-    if (!u) return alert('Invalid credentials.');
-    state.user = u; state.profile = u; await loadAllData(); showApp();
+    if (mode==='supabase'){
+  const { data, error } = await supabaseClient.auth.signInWithPassword({
+    email,
+    password
+  });
+
+  if (error) {
+    alert(error.message);
+    return;
   }
+
+  const user = data.user;
+
+  // get profile record
+  const { data: profiles, error: pErr } = await supabaseClient
+  .from('profiles')
+  .select('*')
+  .eq('email', user.email)
+  .limit(1);
+
+
+  if (pErr || !profiles || !profiles.length) {
+    alert('No profile found for this account. Contact admin.');
+    await supabaseClient.auth.signOut();
+    return;
+  }
+
+  const profile = profiles[0];
+
+  if (profile.is_active === false) {
+    alert('This account has been disabled by admin.');
+    await supabaseClient.auth.signOut();
+    return;
+  }
+
+  // save to app state
+  state.user = user;
+  state.profile = profile;
+
+await loadAllData();
+showApp();
+
+if (state.profile && state.profile.is_admin) {
+  loadInstructorsList();
+}
+
+} else {
+  const db = readDemo();
+  const u = (db.users||[]).find(x=>x.email.toLowerCase()===email.toLowerCase() && x.password===password);
+  if (!u) return alert('Invalid credentials.');
+  state.user = u; state.profile = u; await loadAllData(); showApp();
+}
+
 }
 async function signUp(){
   if (mode!=='supabase') return;
@@ -250,7 +324,18 @@ function renderInstructorToday(){
 }
 
 function renderAdmin(){
-  const isAdmin = (mode==='supabase') ? !!state.profile?.is_admin : !!state.user?.is_admin;
+ const isAdmin =
+  (mode === 'supabase')
+    ? !!(
+        // any of these makes the user admin in Supabase mode
+        state.profile?.is_admin ||
+        state.user?.user_metadata?.is_admin === true ||
+        state.user?.app_metadata?.role === 'admin' ||
+        (Array.isArray(state.user?.app_metadata?.roles) && state.user.app_metadata.roles.includes('admin')) ||
+        state.user?.email === 'admin@aamaritime.gy'
+      )
+    : !!state.user?.is_admin;
+
   $('#adminOnly').classList.toggle('hide', !isAdmin ? true : false);
   $('#adminBlock').classList.toggle('hide', isAdmin ? true : false);
   if (!isAdmin) return;
@@ -288,8 +373,8 @@ document.getElementById('pwUser').innerHTML = users.map(u=>`<option value="${u.i
   try {
     const topicListEl = document.getElementById('topicList');
     if (topicListEl){
-      const isAdmin = (mode==='supabase') ? !!state.profile?.is_admin : !!state.user?.is_admin;
-      if (isAdmin){
+      const isAdminInner = (mode==='supabase') ? !!state.profile?.is_admin : !!state.user?.is_admin;
+      if (isAdminInner){
         const trows = state.topics.slice().sort((a,b)=> (a.date||'').localeCompare(b.date||'')).map(t=>{
           const subj = state.subjects.find(s=>s.id===t.subject_id);
           const inst = state.instructors.find(i=>i.id===t.instructor_id);
@@ -312,13 +397,13 @@ document.getElementById('pwUser').innerHTML = users.map(u=>`<option value="${u.i
   try {
     const subjListEl = document.getElementById('subjList');
     if (subjListEl){
-      const rows = (state.subjects||[]).map(s=>`<div class="row" data-subj="${s.id}">
+      const rows2 = (state.subjects||[]).map(s=>`<div class="row" data-subj="${s.id}">
         <b class="grow">${s.name}</b>
         <span class="muted small">${(s.total_hours||0)} h</span>
         <button class="btn small" data-act="editSubject">Edit</button>
         <button class="btn small warn" data-act="delSubject">Delete</button>
       </div>`).join('');
-      subjListEl.innerHTML = rows || '<div class="muted">No subjects.</div>';
+      subjListEl.innerHTML = rows2 || '<div class="muted">No subjects.</div>';
     }
   } catch(e){}
 }
@@ -429,32 +514,54 @@ function importBackup(evt){
 }
 
 // ---------- REPORTS ----------
-function renderReports(){
-  const isAdmin = (mode==='supabase') ? !!state.profile?.is_admin : !!state.user?.is_admin;
-  const myId = (mode==='supabase'? state.profile?.id : state.user?.id);
-  const list = isAdmin? state.topics : state.topics.filter(t=>t.instructor_id===myId);
+function renderReports() {
+  // Hours Summary table
+  const isAdmin = (mode === 'supabase')
+    ? !!state.profile?.is_admin
+    : !!state.user?.is_admin;
 
-  let head='<table class="table"><thead><tr><th>Subject</th><th>Date</th><th>Hours</th><th>Topic Name</th><th>Instructor</th><th>Status</th></tr></thead><tbody>';
+  const myId = (mode === 'supabase'
+    ? state.profile?.id
+    : state.user?.id);
 
-  let body=list.map(t=>{
-    const subj = state.subjects.find(s=>s.id===t.subject_id);
-    const inst = state.instructors.find(i=>i.id===t.instructor_id);
-    const status = t.completed? 'Complete':'Pending';
-    const topic = t.completed? (t.title||''):'No completed topics yet';
-    const instructor = t.completed? (inst?.name||inst?.email||''):'No completed topics yet';
-    const date = t.date||'';
-    const hours = (t.duration_hours||0).toFixed(1);
-    return `<tr><td>${subj?.name||''}</td><td>${date}</td><td>${hours}</td><td>${topic}</td><td>${instructor}</td><td>${status}</td></tr>`;
-  }).join("");
+  const list = isAdmin
+    ? state.topics
+    : state.topics.filter(t => t.instructor_id === myId);
 
-  // If no topics at all
-  if(!list.length){
+  let head =
+    '<table class="table"><thead><tr>' +
+    '<th>Subject</th><th>Date</th><th>Hours</th>' +
+    '<th>Topic Name</th><th>Instructor</th><th>Status</th>' +
+    '</tr></thead><tbody>';
+
+  let body = list.map(t => {
+    const subj = state.subjects.find(s => s.id === t.subject_id);
+    const inst = state.instructors.find(i => i.id === t.instructor_id);
+    const status = t.completed ? 'Complete' : 'Pending';
+    const topic = t.completed ? (t.title || '') : 'No completed topics yet';
+    const instructor = t.completed ? (inst?.name || inst?.email || '') : 'No completed topics yet';
+    const date = t.date || '';
+    const hours = (t.duration_hours || 0).toFixed(1);
+    return `<tr>
+      <td>${subj?.name || ''}</td>
+      <td>${date}</td>
+      <td>${hours}</td>
+      <td>${topic}</td>
+      <td>${instructor}</td>
+      <td>${status}</td>
+    </tr>`;
+  }).join('');
+
+  if (!list.length) {
     body = '<tr><td colspan="6" class="muted">No topics entered yet.</td></tr>';
   }
 
-  $('#hoursSummary').innerHTML = head + body + '</tbody></table>';
+  document.getElementById('hoursSummary').innerHTML =
+    head + body + '</tbody></table>';
+
+  // Update Subject Report dropdowns when Reports tab renders
+  updateSubjectReportUI();
 }
-// Instructor management (Demo Mode only)
 
 // Topic management (Demo & Supabase)
 document.addEventListener('click', function(e){
@@ -507,7 +614,7 @@ async function deleteTopic(id){
   }
 }
 
-
+// Instructor management (Demo Mode only)
 document.addEventListener('click', function(e){
   const btn = e.target.closest('[data-act]'); if (!btn) return;
   const act = btn.getAttribute('data-act');
@@ -522,7 +629,8 @@ function editInstructorName(userId){
   const db = readDemo(); const u = (db.users||[]).find(x=>x.id===userId && !x.is_admin);
   if (!u) return alert('Instructor not found.');
   const nn = prompt('New instructor name:', u.name); if (!nn) return;
-  u.name = nn.trim(); writeDemo(db); loadData().then(()=>{ renderAdmin(); renderCalendar(); });
+  u.name = nn.trim(); writeDemo(db);
+  loadAllData().then(()=>{ renderAdmin(); renderCalendar(); });
 }
 function deleteInstructor(userId){
   if (mode!=='demo') return alert('Delete available in local mode.');
@@ -532,7 +640,8 @@ function deleteInstructor(userId){
   db.users = (db.users||[]).filter(x=>x.id!==userId);
   db.topics = (db.topics||[]).filter(t=>t.instructor_id!==userId);
   db.assignments = (db.assignments||[]).filter(a=>a.instructor_id!==userId);
-  writeDemo(db); loadData().then(()=>{ renderAdmin(); renderCalendar(); });
+  writeDemo(db);
+  loadAllData().then(()=>{ renderAdmin(); renderCalendar(); });
 }
 
 // Subject management (Demo Mode)
@@ -573,4 +682,214 @@ function enforceTodayCompletion(topic){
   const today=new Date().toISOString().slice(0,10);
   const d=(topic.date||"").slice(0,10);
   if(topic.completed && d!==today){ topic.completed=false; }
+}
+
+// ---------- SUBJECT REPORT HELPERS ----------
+
+function populateSubjectReportFilters() {
+  const subjectSelect = document.getElementById('reportSubjectSelect');
+  const instructorSelect = document.getElementById('reportInstructorSelect');
+
+  if (!subjectSelect || !instructorSelect) return;
+
+  const subjects = state.subjects || [];
+  const instructors = state.instructors || [];
+
+  // Clear any existing options
+  subjectSelect.innerHTML = '';
+  instructorSelect.innerHTML = '<option value="all">All instructors</option>';
+
+  // Subjects
+  subjects.forEach(s => {
+    const opt = document.createElement('option');
+    opt.value = s.id;
+    opt.textContent = s.name || s.title || ('Subject ' + s.id);
+    subjectSelect.appendChild(opt);
+  });
+
+  // Instructors
+  instructors.forEach(i => {
+    const opt = document.createElement('option');
+    opt.value = i.id;
+    opt.textContent = i.name || i.email || ('Instructor ' + i.id);
+    instructorSelect.appendChild(opt);
+  });
+}
+
+let subjectReportButtonBound = false;
+
+function updateSubjectReportUI() {
+  const subjectSelect = document.getElementById('reportSubjectSelect');
+  const instructorSelect = document.getElementById('reportInstructorSelect');
+  if (!subjectSelect || !instructorSelect) return;
+  populateSubjectReportFilters();
+  wireSubjectReportButton();
+}
+
+function wireSubjectReportButton() {
+  if (subjectReportButtonBound) return;
+  const btn = document.getElementById('generateSubjectReportBtn');
+  if (!btn) return;
+  btn.addEventListener('click', generateSubjectReport);
+  subjectReportButtonBound = true;
+}
+
+function generateSubjectReport() {
+  const subjectSelect = document.getElementById('reportSubjectSelect');
+  const instructorSelect = document.getElementById('reportInstructorSelect');
+  const tbody = document.querySelector('#subjectReportTable tbody');
+
+  if (!subjectSelect || !instructorSelect || !tbody) return;
+
+  const subjects = state.subjects || [];
+  const instructors = state.instructors || [];
+  const topics = state.topics || [];
+
+  const selectedSubjectId = subjectSelect.value;
+  const selectedInstructorId = instructorSelect.value; // 'all' or specific id
+
+  const subject = subjects.find(s => String(s.id) === String(selectedSubjectId));
+  if (!subject) {
+    alert('Please select a subject.');
+    return;
+  }
+
+  const requiredHours = Number(subject.total_hours || 0);
+
+  const isAdmin = (mode === 'supabase') ? !!state.profile?.is_admin : !!state.user?.is_admin;
+  const myId = (mode === 'supabase' ? state.profile?.id : state.user?.id);
+
+  const visibleTopics = isAdmin
+    ? topics
+    : topics.filter(t => t.instructor_id === myId);
+
+  const filtered = visibleTopics.filter(t => {
+    if (String(t.subject_id) !== String(selectedSubjectId)) return false;
+    if (selectedInstructorId !== 'all' && String(t.instructor_id) !== String(selectedInstructorId)) return false;
+    return true;
+  });
+
+  const deliveredByInstructor = {};
+  let totalDelivered = 0;
+
+  filtered.forEach(t => {
+    const hrs = Number(t.duration_hours || t.hours || 0);
+    const instId = t.instructor_id;
+    if (!deliveredByInstructor[instId]) deliveredByInstructor[instId] = 0;
+    deliveredByInstructor[instId] += hrs;
+    totalDelivered += hrs;
+  });
+
+  // Clear old rows
+  tbody.innerHTML = '';
+
+  Object.keys(deliveredByInstructor).forEach(instId => {
+    const inst = instructors.find(i => String(i.id) === String(instId));
+    const instructorName = inst ? (inst.name || inst.email || ('Instructor ' + instId)) : '(Unknown)';
+    const delivered = deliveredByInstructor[instId];
+    const remaining = Math.max(requiredHours - delivered, 0);
+
+    const tr = document.createElement('tr');
+    tr.innerHTML = `
+      <td>${subject.name || subject.title || subject.id}</td>
+      <td>${instructorName}</td>
+      <td>${requiredHours}</td>
+      <td>${delivered.toFixed(1)}</td>
+      <td>${remaining.toFixed(1)}</td>
+    `;
+    tbody.appendChild(tr);
+  });
+
+  if (selectedInstructorId === 'all') {
+    const remainingAll = Math.max(requiredHours - totalDelivered, 0);
+    const trTotal = document.createElement('tr');
+    trTotal.innerHTML = `
+      <td><strong>${subject.name || subject.title || subject.id}</strong></td>
+      <td><strong>Total (All)</strong></td>
+      <td><strong>${requiredHours}</strong></td>
+      <td><strong>${totalDelivered.toFixed(1)}</strong></td>
+      <td><strong>${remainingAll.toFixed(1)}</strong></td>
+    `;
+    tbody.appendChild(trTotal);
+  }
+
+  if (!filtered.length) {
+    const trEmpty = document.createElement('tr');
+    trEmpty.innerHTML = '<td colspan="5" class="muted">No delivered hours yet for this subject/instructor.</td>';
+    tbody.appendChild(trEmpty);
+  }
+}
+async function loadInstructorsList() {
+  const tbody = document.querySelector('#tblInstructors tbody');
+  if (!tbody) return;
+
+  tbody.innerHTML = '<tr><td colspan="4">Loading...</td></tr>';
+
+  const { data, error } = await supabaseClient
+    .from('profiles')
+    .select('id, name, email, is_admin, is_active')
+    .eq('is_admin', false)  // only instructors
+    .order('name');
+
+  if (error) {
+    tbody.innerHTML = `<tr><td colspan="4">Error: ${error.message}</td></tr>`;
+    return;
+  }
+
+  if (!data || !data.length) {
+    tbody.innerHTML = '<tr><td colspan="4">No instructors yet.</td></tr>';
+    return;
+  }
+
+  tbody.innerHTML = '';
+
+  data.forEach(row => {
+    const tr = document.createElement('tr');
+
+    tr.innerHTML = `
+      <td>${row.name || ''}</td>
+      <td>${row.email || ''}</td>
+      <td>${row.is_active ? 'Yes' : 'No'}</td>
+      <td>
+        <button type="button" class="btnToggleInstructor" data-id="${row.id}">
+          ${row.is_active ? 'Disable' : 'Enable'}
+        </button>
+      </td>
+    `;
+
+    tbody.appendChild(tr);
+  });
+
+  // button click handlers
+  document.querySelectorAll('.btnToggleInstructor').forEach(btn => {
+    btn.addEventListener('click', async (e) => {
+      const id = e.target.getAttribute('data-id');
+      await toggleInstructorActive(id);
+      await loadInstructorsList();
+    });
+  });
+}
+
+async function toggleInstructorActive(profileId) {
+  const { data, error } = await supabaseClient
+    .from('profiles')
+    .select('is_active')
+    .eq('id', profileId)
+    .single();
+
+  if (error) {
+    alert('Error reading instructor: ' + error.message);
+    return;
+  }
+
+  const newValue = !data.is_active;
+
+  const { error: updError } = await supabaseClient
+    .from('profiles')
+    .update({ is_active: newValue })
+    .eq('id', profileId);
+
+  if (updError) {
+    alert('Error updating instructor: ' + updError.message);
+  }
 }
