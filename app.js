@@ -1,7 +1,7 @@
 // Demo Mode + optional Supabase Mode, with @aamaritime.gy users
 // *** Put your project URL and ANON PUBLIC KEY here ***
 const SUPABASE_URL = 'https://wjszrzxuxutsslfgvuwd.supabase.co';   // <-- your project URL
-const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9....wYI5YyWxLTs1l2Z-IGrlcWatq8oZtkN4Uk'; // <-- your anon public key
+const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Indqc3pyenh1eHV0c3NsZmd2dXdkIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjI1MzM1NTEsImV4cCI6MjA3ODEwOTU1MX0.5YmUUEeuRwYI5YyWxLTs1l2Z-IGrlcWatq8oZtkN4Uk'; // <-- your anon public key
 
 // Keys to store config in browser (Settings tab)
 const CFG_URL_KEY = 'itt_supabase_url';
