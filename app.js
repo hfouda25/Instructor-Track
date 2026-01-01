@@ -151,10 +151,11 @@ async function signIn(){
 
   // get profile record
   const { data: profiles, error: pErr } = await supabaseClient
-    .from('profiles')
-    .select('*')
-    .eq('id', user.id)
-    .limit(1);
+  .from('profiles')
+  .select('*')
+  .eq('email', user.email)
+  .limit(1);
+
 
   if (pErr || !profiles || !profiles.length) {
     alert('No profile found for this account. Contact admin.');
