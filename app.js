@@ -9,8 +9,8 @@
 // Example URL: https://xxxxxx.supabase.co
 // Example key: long jwt string
 // -------------------------------------------------
-const SUPABASE_URL = 'https://YOUR-PROJECT.supabase.co';
-const SUPABASE_ANON_KEY = 'YOUR-ANON-KEY-HERE';
+const SUPABASE_URL = 'https://wjszrzxuxutsslfgvuwd.supabase.co';
+const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Indqc3pyenh1eHV0c3NsZmd2dXdkIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjI1MzM1NTEsImV4cCI6MjA3ODEwOTU1MX0.5YmUUEeuRwYI5YyWxLTs1l2Z-IGrlcWatq8oZtkN4Uk';
 
 // If both are filled, use Supabase. Otherwise, Demo mode.
 let mode = (SUPABASE_URL && SUPABASE_ANON_KEY) ? 'supabase' : 'demo';
