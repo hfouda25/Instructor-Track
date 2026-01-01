@@ -90,20 +90,37 @@ function writeDemo(db){ localStorage.setItem(DEMO_LS_KEY, JSON.stringify(db)); }
 
 // ---------- UI & AUTH ----------
 function initUI(){
-  $('#btnSignIn').onclick = signIn;
-  $('#btnSignUp').onclick = signUp;
+  $('#btnSignIn').onclick  = signIn;
+  $('#btnSignUp').onclick  = signUp;
   $('#btnSignOut').onclick = signOut;
   $('#btnCreateInstructor').onclick = createInstructorProfile;
   $('#btnAddSubject').onclick = addSubject;
   $('#btnAssign').onclick = assignSubject;
   $('#btnAddTopic').onclick = addTopic;
   $('#btnSetPw').onclick = setDemoPassword;
-  $('#prevMonth').onclick = ()=>{ const [Y,M]=state.viewMonth.split('-').map(Number); const d=new Date(Y,M-2,1); state.viewMonth=d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0'); renderCalendar(); };
-  $('#nextMonth').onclick = ()=>{ const [Y,M]=state.viewMonth.split('-').map(Number); const d=new Date(Y,M,1); state.viewMonth=d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0'); renderCalendar(); };
-  const imp = document.getElementById('fileImport'); if (imp) imp.addEventListener('change', importBackup, false);
-  const exp = document.getElementById('btnExport'); if (exp) exp.onclick = exportBackup;
-  const prn = document.getElementById('btnPrint'); if (prn) prn.onclick = ()=>window.print();
+
+  // NEW: reload instructors list in Admin tab
+  $('#btnReloadInstructors').onclick = () => loadInstructorsList();
+
+  $('#prevMonth').onclick = ()=>{
+    const [Y,M] = state.viewMonth.split('-').map(Number);
+    const d = new Date(Y,M-2,1);
+    state.viewMonth = d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0');
+  };
+  $('#nextMonth').onclick = ()=>{
+    const [Y,M] = state.viewMonth.split('-').map(Number);
+    const d = new Date(Y,M,1);
+    state.viewMonth = d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0');
+  };
+
+  const imp = document.getElementById('fileImport');
+  if (imp) imp.addEventListener('change', importBackup, false);
+  const exp = document.getElementById('btnExport');
+  if (exp) exp.onclick = exportBackup;
+  const prn = document.getElementById('btnPrint');
+  if (prn) prn.onclick = () => window.print();
 }
+
 
 function bindTabs(){
   $$('.tab').forEach(btn=>btn.addEventListener('click', ()=>{
