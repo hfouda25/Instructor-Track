@@ -815,3 +815,77 @@ function generateSubjectReport() {
     tbody.appendChild(trEmpty);
   }
 }
+async function loadInstructorsList() {
+  const tbody = document.querySelector('#tblInstructors tbody');
+  if (!tbody) return;
+
+  tbody.innerHTML = '<tr><td colspan="4">Loading...</td></tr>';
+
+  const { data, error } = await supabaseClient
+    .from('profiles')
+    .select('id, name, email, is_admin, is_active')
+    .eq('is_admin', false)  // only instructors
+    .order('name');
+
+  if (error) {
+    tbody.innerHTML = `<tr><td colspan="4">Error: ${error.message}</td></tr>`;
+    return;
+  }
+
+  if (!data || !data.length) {
+    tbody.innerHTML = '<tr><td colspan="4">No instructors yet.</td></tr>';
+    return;
+  }
+
+  tbody.innerHTML = '';
+
+  data.forEach(row => {
+    const tr = document.createElement('tr');
+
+    tr.innerHTML = `
+      <td>${row.name || ''}</td>
+      <td>${row.email || ''}</td>
+      <td>${row.is_active ? 'Yes' : 'No'}</td>
+      <td>
+        <button type="button" class="btnToggleInstructor" data-id="${row.id}">
+          ${row.is_active ? 'Disable' : 'Enable'}
+        </button>
+      </td>
+    `;
+
+    tbody.appendChild(tr);
+  });
+
+  // button click handlers
+  document.querySelectorAll('.btnToggleInstructor').forEach(btn => {
+    btn.addEventListener('click', async (e) => {
+      const id = e.target.getAttribute('data-id');
+      await toggleInstructorActive(id);
+      await loadInstructorsList();
+    });
+  });
+}
+
+async function toggleInstructorActive(profileId) {
+  const { data, error } = await supabaseClient
+    .from('profiles')
+    .select('is_active')
+    .eq('id', profileId)
+    .single();
+
+  if (error) {
+    alert('Error reading instructor: ' + error.message);
+    return;
+  }
+
+  const newValue = !data.is_active;
+
+  const { error: updError } = await supabaseClient
+    .from('profiles')
+    .update({ is_active: newValue })
+    .eq('id', profileId);
+
+  if (updError) {
+    alert('Error updating instructor: ' + updError.message);
+  }
+}
