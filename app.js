@@ -74,7 +74,7 @@ function initUI(){
   $('#btnSignUp').onclick = signUp;
   $('#btnSignOut').onclick = signOut;
   //$('#btnCreateInstructor').onclick = createInstructorProfile;
-  $('#btnAddSubject').onclick = addSubject;
+  // $('#btnAddSubject').onclick = addSubject;
   $('#btnAssign').onclick = assignSubject;
   $('#btnAddTopic').onclick = addTopic;
   $('#btnSetPw').onclick = setDemoPassword;
