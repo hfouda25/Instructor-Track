@@ -186,12 +186,65 @@ async function signIn(){
     state.user = u; state.profile = u; await loadAllData(); showApp();
   }
 }
-async function signUp(){
-  if (mode!=='supabase') return;
-  const email = $('#email').value.trim(); const password = $('#password').value;
-  const { error } = await supabaseClient.auth.signUp({ email, password });
-  if (error) alert(error.message); else alert('Account created. Ask admin to set your role.');
+async function signUp() {
+  const email = $('#email').value.trim();
+  const password = $('#password').value.trim();
+
+  if (!email || !password) {
+    alert('Please enter email and password.');
+    return;
+  }
+
+  if (!supabaseClient) {
+    alert('Supabase is not configured.');
+    return;
+  }
+
+  try {
+    // 1) Create auth user in Supabase
+    const { data, error } = await supabaseClient.auth.signUp({
+      email,
+      password
+    });
+
+    if (error) {
+      alert('Sign up failed: ' + error.message);
+      return;
+    }
+
+    const user = data.user;
+    if (!user) {
+      alert('Sign up failed: user not returned.');
+      return;
+    }
+
+    // 2) Auto-create profile row for this user as INSTRUCTOR (not admin)
+    const { error: profileError } = await supabaseClient
+      .from('profiles')
+      .insert({
+        id: user.id,            // must match auth user id
+        email: user.email,
+        is_admin: false,
+        is_instructor: true
+      });
+
+    if (profileError) {
+      console.error('Error creating profile:', profileError);
+      alert(
+        'Account created, but there was an error creating your profile: ' +
+        profileError.message
+      );
+      return;
+    }
+
+    // 3) Success message – user can now sign in as instructor
+    alert('Account created. You can now sign in as an instructor.');
+  } catch (err) {
+    console.error(err);
+    alert('Unexpected error during sign up: ' + err.message);
+  }
 }
+
 async function signOut(){
   if (mode==='supabase'){ await supabaseClient.auth.signOut(); }
   state.user=null; state.profile=null; showAuth();
