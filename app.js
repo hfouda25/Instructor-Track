@@ -238,6 +238,35 @@ async function toggleInstructorActive(id){
  await supabaseClient.from("profiles").update({is_active:newVal}).eq("id",id);
  loadInstructorsList();
 }
+function initUI() {
+
+  // AUTH BUTTONS
+  $('#btnSignIn').onclick = signIn;
+  $('#btnSignUp').onclick = signUp;
+  $('#btnSignOut').onclick = signOut;
+
+  // ADMIN reload instructors button (if exists)
+  const reloadBtn = document.getElementById('btnReloadInstructors');
+  if (reloadBtn) reloadBtn.onclick = () => loadInstructorsList();
+
+  // Calendar navigation
+  const prev = document.getElementById('prevMonth');
+  const next = document.getElementById('nextMonth');
+
+  if (prev) prev.onclick = () => {
+      const d = new Date(state.viewMonth + '-02');
+      d.setMonth(d.getMonth() - 1);
+      state.viewMonth = d.getFullYear() + '-' + String(d.getMonth()+1).padStart(2,'0');
+      renderCalendar();
+  };
+
+  if (next) next.onclick = () => {
+      const d = new Date(state.viewMonth + '-02');
+      d.setMonth(d.getMonth() + 1);
+      state.viewMonth = d.getFullYear() + '-' + String(d.getMonth()+1).padStart(2,'0');
+      renderCalendar();
+  };
+}
 
 // ============================
 // EVERYTHING BELOW = your existing rendering + buttons
