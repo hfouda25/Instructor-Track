@@ -437,34 +437,80 @@ function renderAdmin(){
 
 }
 
-async function createInstructorProfile(){
-  if (mode!=='supabase') return alert('Creating instructors is only available in Supabase mode.');
-  const name = $('#instName').value.trim();
-  const email = $('#instEmail').value.trim().toLowerCase();
-  if (!name || !email) return alert('Enter full name and email.');
-  if (!email.endsWith('@aamaritime.gy')) return alert('Email must be @aamaritime.gy');
+async function loadAllData(){
+  if (mode==='supabase'){
+    // 1) Load subjects (order by id – this column always exists)
+    const { data: subjData, error: subjError } = await supabaseClient
+      .from('subjects')
+      .select('*')
+      .order('id');
 
-  const { data: existing, error: errCheck } = await supabaseClient
-    .from('profiles')
-    .select('*')
-    .eq('email', email)
-    .limit(1);
+    if (subjError) {
+      alert('Error subjects: ' + subjError.message);
+      return;
+    }
 
-  if (errCheck) return alert('Error checking existing profiles: '+errCheck.message);
-  if (existing && existing.length) return alert('Profile already exists for this email.');
+    // 2) Load instructors from profiles (non-admins only)
+    const { data: instData, error: instError } = await supabaseClient
+      .from('profiles')
+      .select('*')
+      .eq('is_admin', false)
+      .order('name');      // profiles table DOES have "name"
 
-  const { data, error } = await supabaseClient
-    .from('profiles')
-    .insert({ name, email, is_admin:false, is_active:true })
-    .select();
-  if (error) return alert('Error creating profile: '+error.message);
+    if (instError) {
+      alert('Error instructors: ' + instError.message);
+      return;
+    }
 
-  alert('Instructor profile created. Ask admin to set a password in Supabase Auth.');
-  $('#instName').value='';
-  $('#instEmail').value='';
-  await loadAllData();
-  renderAdmin();
+    // 3) Load topics
+    const isAdmin = !!(state.profile && state.profile.is_admin);
+    let topicsData = [];
+
+    if (isAdmin) {
+      // admin sees all topics
+      const { data, error } = await supabaseClient
+        .from('topics')
+        .select('*')
+        .order('date');
+
+      if (error) {
+        alert('Error topics: ' + error.message);
+        return;
+      }
+      topicsData = data || [];
+    } else {
+      // instructor sees only their own topics
+      const myId = state.profile ? state.profile.id : 'none';
+      const { data, error } = await supabaseClient
+        .from('topics')
+        .select('*')
+        .eq('instructor_id', myId)
+        .order('date');
+
+      if (error) {
+        alert('Error topics: ' + error.message);
+        return;
+      }
+      topicsData = data || [];
+    }
+
+    // Save into app state
+    state.subjects    = subjData   || [];
+    state.instructors = instData   || [];
+    state.topics      = topicsData || [];
+    // We are NOT using a "deliveries" table in Supabase, so keep it empty:
+    state.deliveries  = [];
+
+  } else {
+    // Demo / local mode (keep simple)
+    const db = readDemo();
+    state.subjects    = db.subjects    || [];
+    state.instructors = (db.users || []).filter(x => !x.is_admin);
+    state.topics      = db.topics      || [];
+    state.deliveries  = db.deliveries  || [];
+  }
 }
+
 
 // Demo password update
 async function setDemoPassword(){
