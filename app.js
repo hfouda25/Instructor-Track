@@ -90,37 +90,20 @@ function writeDemo(db){ localStorage.setItem(DEMO_LS_KEY, JSON.stringify(db)); }
 
 // ---------- UI & AUTH ----------
 function initUI(){
-  $('#btnSignIn').onclick  = signIn;
-  $('#btnSignUp').onclick  = signUp;
+  $('#btnSignIn').onclick = signIn;
+  $('#btnSignUp').onclick = signUp;
   $('#btnSignOut').onclick = signOut;
   $('#btnCreateInstructor').onclick = createInstructorProfile;
   $('#btnAddSubject').onclick = addSubject;
   $('#btnAssign').onclick = assignSubject;
   $('#btnAddTopic').onclick = addTopic;
   $('#btnSetPw').onclick = setDemoPassword;
-
-  // NEW: reload instructors list in Admin tab
-  $('#btnReloadInstructors').onclick = () => loadInstructorsList();
-
-  $('#prevMonth').onclick = ()=>{
-    const [Y,M] = state.viewMonth.split('-').map(Number);
-    const d = new Date(Y,M-2,1);
-    state.viewMonth = d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0');
-  };
-  $('#nextMonth').onclick = ()=>{
-    const [Y,M] = state.viewMonth.split('-').map(Number);
-    const d = new Date(Y,M,1);
-    state.viewMonth = d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0');
-  };
-
-  const imp = document.getElementById('fileImport');
-  if (imp) imp.addEventListener('change', importBackup, false);
-  const exp = document.getElementById('btnExport');
-  if (exp) exp.onclick = exportBackup;
-  const prn = document.getElementById('btnPrint');
-  if (prn) prn.onclick = () => window.print();
+  $('#prevMonth').onclick = ()=>{ const [Y,M]=state.viewMonth.split('-').map(Number); const d=new Date(Y,M-2,1); state.viewMonth=d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0'); renderCalendar(); };
+  $('#nextMonth').onclick = ()=>{ const [Y,M]=state.viewMonth.split('-').map(Number); const d=new Date(Y,M,1); state.viewMonth=d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0'); renderCalendar(); };
+  const imp = document.getElementById('fileImport'); if (imp) imp.addEventListener('change', importBackup, false);
+  const exp = document.getElementById('btnExport'); if (exp) exp.onclick = exportBackup;
+  const prn = document.getElementById('btnPrint'); if (prn) prn.onclick = ()=>window.print();
 }
-
 
 function bindTabs(){
   $$('.tab').forEach(btn=>btn.addEventListener('click', ()=>{
@@ -192,20 +175,16 @@ async function signIn(){
   state.user = user;
   state.profile = profile;
 
-await loadAllData();
-showApp();
-
-if (state.profile && state.profile.is_admin) {
-  loadInstructorsList();
+  await loadAllData();
+  showApp();
 }
 
-} else {
-  const db = readDemo();
-  const u = (db.users||[]).find(x=>x.email.toLowerCase()===email.toLowerCase() && x.password===password);
-  if (!u) return alert('Invalid credentials.');
-  state.user = u; state.profile = u; await loadAllData(); showApp();
-}
-
+  } else {
+    const db = readDemo();
+    const u = (db.users||[]).find(x=>x.email.toLowerCase()===email.toLowerCase() && x.password===password);
+    if (!u) return alert('Invalid credentials.');
+    state.user = u; state.profile = u; await loadAllData(); showApp();
+  }
 }
 async function signUp(){
   if (mode!=='supabase') return;
@@ -834,79 +813,5 @@ function generateSubjectReport() {
     const trEmpty = document.createElement('tr');
     trEmpty.innerHTML = '<td colspan="5" class="muted">No delivered hours yet for this subject/instructor.</td>';
     tbody.appendChild(trEmpty);
-  }
-}
-async function loadInstructorsList() {
-  const tbody = document.querySelector('#tblInstructors tbody');
-  if (!tbody) return;
-
-  tbody.innerHTML = '<tr><td colspan="4">Loading...</td></tr>';
-
-  const { data, error } = await supabaseClient
-    .from('profiles')
-    .select('id, name, email, is_admin, is_active')
-    .eq('is_admin', false)  // only instructors
-    .order('name');
-
-  if (error) {
-    tbody.innerHTML = `<tr><td colspan="4">Error: ${error.message}</td></tr>`;
-    return;
-  }
-
-  if (!data || !data.length) {
-    tbody.innerHTML = '<tr><td colspan="4">No instructors yet.</td></tr>';
-    return;
-  }
-
-  tbody.innerHTML = '';
-
-  data.forEach(row => {
-    const tr = document.createElement('tr');
-
-    tr.innerHTML = `
-      <td>${row.name || ''}</td>
-      <td>${row.email || ''}</td>
-      <td>${row.is_active ? 'Yes' : 'No'}</td>
-      <td>
-        <button type="button" class="btnToggleInstructor" data-id="${row.id}">
-          ${row.is_active ? 'Disable' : 'Enable'}
-        </button>
-      </td>
-    `;
-
-    tbody.appendChild(tr);
-  });
-
-  // button click handlers
-  document.querySelectorAll('.btnToggleInstructor').forEach(btn => {
-    btn.addEventListener('click', async (e) => {
-      const id = e.target.getAttribute('data-id');
-      await toggleInstructorActive(id);
-      await loadInstructorsList();
-    });
-  });
-}
-
-async function toggleInstructorActive(profileId) {
-  const { data, error } = await supabaseClient
-    .from('profiles')
-    .select('is_active')
-    .eq('id', profileId)
-    .single();
-
-  if (error) {
-    alert('Error reading instructor: ' + error.message);
-    return;
-  }
-
-  const newValue = !data.is_active;
-
-  const { error: updError } = await supabaseClient
-    .from('profiles')
-    .update({ is_active: newValue })
-    .eq('id', profileId);
-
-  if (updError) {
-    alert('Error updating instructor: ' + updError.message);
   }
 }
