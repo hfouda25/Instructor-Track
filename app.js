@@ -73,7 +73,7 @@ function initUI(){
   $('#btnSignIn').onclick = signIn;
   $('#btnSignUp').onclick = signUp;
   $('#btnSignOut').onclick = signOut;
-  $('#btnCreateInstructor').onclick = createInstructorProfile;
+  //$('#btnCreateInstructor').onclick = createInstructorProfile;
   $('#btnAddSubject').onclick = addSubject;
   $('#btnAssign').onclick = assignSubject;
   $('#btnAddTopic').onclick = addTopic;
