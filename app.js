@@ -532,7 +532,7 @@ if (!subject_id || !instructor_id || !title) return;
     const db = readDemo();
     db.topics.push({ id:'t_'+Math.random().toString(36).slice(2,8), subject_id, instructor_id, date, start, end, duration_hours: hours, title, completed:false });
     writeDemo(db); await loadAllData(); renderCalendar(); renderAdmin();
-    Make topic date optional
+  
   }
 }
 
