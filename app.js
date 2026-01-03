@@ -519,22 +519,50 @@ async function assignSubject(){
 async function addTopic(){
   const subject_id = $('#topicSubject').value;
   const instructor_id = $('#topicInstructor').value;
-  const date = $('#topicDate').value || null;\
-  const hours = parseFloat($('#topicHours').value||'0');
-  const start = $('#topicStart').value || null;
-  const end = $('#topicEnd').value || null;
+  const date = $('#topicDate').value || null;
+  const hours = parseFloat($('#topicHours').value || '0');
   const title = $('#topicTitle').value.trim();
-if (!subject_id || !instructor_id || !title) return;
-  if (mode==='supabase'){
-    const { error } = await supabaseClient.from('topics').insert({ subject_id, instructor_id, date, start, end, duration_hours: hours, title, completed: false });
-    if (error) alert(error.message); else { await loadAllData(); renderCalendar(); renderAdmin(); }
+
+  if (!subject_id || !instructor_id || !title) {
+    alert('Please fill Subject, Instructor and Topic title');
+    return;
+  }
+
+  if (mode === 'supabase') {
+    const { error } = await supabaseClient
+      .from('topics')
+      .insert({
+        subject_id: subject_id,
+        instructor_id: instructor_id,
+        date: date,
+        hours: hours,
+        topic_title: title
+      });
+
+    if (error) {
+      alert(error.message);
+    } else {
+      await loadAllData();
+      renderCalendar();
+      renderAdmin();
+    }
   } else {
     const db = readDemo();
-    db.topics.push({ id:'t_'+Math.random().toString(36).slice(2,8), subject_id, instructor_id, date, start, end, duration_hours: hours, title, completed:false });
-    writeDemo(db); await loadAllData(); renderCalendar(); renderAdmin();
-  
+    db.topics.push({
+      id: 't_' + Math.random().toString(36).slice(2, 8),
+      subject_id,
+      instructor_id,
+      date,
+      hours,
+      topic_title: title
+    });
+    writeDemo(db);
+    await loadAllData();
+    renderCalendar();
+    renderAdmin();
   }
 }
+
 
 // ---------- BACKUP (DEMO MODE) ----------
 function exportBackup(){
