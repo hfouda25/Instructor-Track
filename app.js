@@ -535,7 +535,7 @@ async function addTopic(){
         subject_id: subject_id,
         instructor_id: instructor_id,
         date: date,
-        duration_hours: hours,
+        hours: hours,
         topic_title: title
       });
 
