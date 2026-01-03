@@ -519,12 +519,12 @@ async function assignSubject(){
 async function addTopic(){
   const subject_id = $('#topicSubject').value;
   const instructor_id = $('#topicInstructor').value;
-  const date = $('#topicDate').value;
+  const date = $('#topicDate').value || null;\
   const hours = parseFloat($('#topicHours').value||'0');
   const start = $('#topicStart').value || null;
   const end = $('#topicEnd').value || null;
   const title = $('#topicTitle').value.trim();
-  if (!subject_id || !instructor_id || !date || !title) return;
+if (!subject_id || !instructor_id || !title) return;
   if (mode==='supabase'){
     const { error } = await supabaseClient.from('topics').insert({ subject_id, instructor_id, date, start, end, duration_hours: hours, title, completed: false });
     if (error) alert(error.message); else { await loadAllData(); renderCalendar(); renderAdmin(); }
@@ -532,6 +532,7 @@ async function addTopic(){
     const db = readDemo();
     db.topics.push({ id:'t_'+Math.random().toString(36).slice(2,8), subject_id, instructor_id, date, start, end, duration_hours: hours, title, completed:false });
     writeDemo(db); await loadAllData(); renderCalendar(); renderAdmin();
+    Make topic date optional
   }
 }
 
