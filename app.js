@@ -284,10 +284,20 @@ async function loadAllData(){
     if (isAdmin){
       const { data: tops } = await supabaseClient.from('topics').select('*');
       state.topics = tops||[];
+      // map DB columns to app expected names (for display)
+state.topics.forEach(t=>{
+  if (t.title == null) t.title = t.topic_title;
+  if (t.duration_hours == null) t.duration_hours = t.hours;
+});
     } else {
       const myId = state.profile?.id || 'none';
       const { data: tops } = await supabaseClient.from('topics').select('*').eq('instructor_id', myId);
       state.topics = tops||[];
+      // map DB columns to app expected names (for display)
+state.topics.forEach(t=>{
+  if (t.title == null) t.title = t.topic_title;
+  if (t.duration_hours == null) t.duration_hours = t.hours;
+});
     }
   } else {
     const db = readDemo();
