@@ -305,7 +305,6 @@ if (isAdmin) {
  const { data: tops, error } = await supabaseClient
   .from('topics')
   .select('*')
-  .eq('instructor_id', state.profile.id);
 
 
   if (error) {
