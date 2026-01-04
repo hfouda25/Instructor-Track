@@ -519,51 +519,34 @@ async function assignSubject(){
 async function addTopic(){
   const subject_id = $('#topicSubject').value;
   const instructor_id = $('#topicInstructor').value;
-  const date = $('#topicDate').value; // can be empty
+  const date = $('#topicDate').value || null;
   const hours = parseFloat($('#topicHours').value || '0');
   const start = $('#topicStart').value || null;
   const end = $('#topicEnd').value || null;
   const title = ($('#topicTitle').value || '').trim();
 
-  if (!subject_id || !instructor_id || !title) {
-    alert('Subject, Instructor and Topic title are required');
-    return;
-  }
+  if (!subject_id || !instructor_id || !title) return;
 
   if (mode === 'supabase') {
+    // Insert using BOTH sets of column names (so whatever your UI uses will work)
     const payload = {
       subject_id,
       instructor_id,
-      date: date || null,
-      start,
-      end,
+      date,
       hours,
       topic_title: title,
+      // keep these too because your table still has them
+      title: title,
+      duration_hours: hours,
+      start,
+      end,
       completed: false
     };
 
-    const { data, error } = await supabaseClient
-      .from('topics')
-      .insert(payload)
-      .select('*')
-      .single();
+    const { error } = await supabaseClient.from('topics').insert(payload);
+    if (error) { alert(error.message); return; }
 
-    if (error) {
-      alert(error.message);
-      return;
-    }
-
-    // update UI immediately
-    state.topics = state.topics || [];
-    state.topics.unshift(data);
-
-    // clear inputs after success
-    $('#topicTitle').value = '';
-    $('#topicHours').value = '1';
-    $('#topicDate').value = '';
-
-    renderAdmin();
-    renderCalendar();
+    await loadAllData();
 
   } else {
     // demo mode
@@ -572,18 +555,27 @@ async function addTopic(){
       id: 't_' + Math.random().toString(36).slice(2, 8),
       subject_id,
       instructor_id,
-      date: date || null,
-      start,
-      end,
+      date,
       hours,
       topic_title: title,
+      title: title,
+      duration_hours: hours,
+      start,
+      end,
       completed: false
     });
     writeDemo(db);
+
     await loadAllData();
-    renderCalendar();
-    renderAdmin();
   }
+
+  // clear inputs AFTER the if/else finishes (important)
+  $('#topicTitle').value = '';
+  $('#topicHours').value = '1';
+  $('#topicDate').value = '';
+
+  renderCalendar();
+  renderAdmin();
 }
 
 // ---------- BACKUP (DEMO MODE) ----------
