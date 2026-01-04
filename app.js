@@ -283,35 +283,40 @@ async function loadAllData(){
     state.assignments = asg||[];
  let topsRes;
 
-if (isAdmin){
-  topsRes = await supabaseClient
+if (isAdmin) {
+  const { data: tops, error } = await supabaseClient
     .from('topics')
-    .select('id, subject_id, instructor_id, date, hours, topic_title, completed');
+    .select('*');
+
+  if (error) {
+    alert(error.message);
+    state.topics = [];
+  } else {
+    state.topics = tops || [];
+  }
+
 } else {
- const myId = state.profile?.id;
-if (!myId) {
-  alert('Profile not loaded: cannot determine instructor_id. Please sign out and sign in again.');
-  state.topics = [];
-  return;
+  // 🚨 wait until profile is ready
+  if (!state.profile || !state.profile.id) {
+    state.topics = [];
+    return;
+  }
+
+ const { data: tops, error } = await supabaseClient
+  .from('topics')
+  .select('*')
+  .eq('instructor_id', state.profile.id);
+
+    .eq('instructor_id', state.profile.id);
+
+  if (error) {
+    alert(error.message);
+    state.topics = [];
+  } else {
+    state.topics = tops || [];
+  }
 }
 
-  topsRes = await supabaseClient
-    .from('topics')
-    .select('id, subject_id, instructor_id, date, hours, topic_title, completed')
-    .eq('instructor_id', myId);
-}
-
-if (topsRes.error) {
-  alert(topsRes.error.message);
-  state.topics = [];
-} else {
-  // 🔑 normalize for the UI
-  state.topics = (topsRes.data || []).map(t => ({
-    ...t,
-    title: t.topic_title || '',
-    duration_hours: t.hours ?? 0
-  }));
-}
 
   } else {
     const db = readDemo();
@@ -553,17 +558,29 @@ async function addTopic(){
     return;
   }
 
-  if (mode === 'supabase') {
-    const { error } = await supabaseClient
-      .from('topics')
-      .insert([{
-        subject_id,
-        instructor_id,
-        date,
-        hours,
-        topic_title,
-        completed: false
-      }]);
+ if (mode === 'supabase') {
+
+  const { error } = await supabaseClient.from('topics').insert([{
+    subject_id,
+    instructor_id,
+    date: date || null,
+    hours: hours || 0,
+    topic_title: topic_title || '',
+    completed: false
+
+
+  if (error) {
+    alert(error.message);
+    return;
+  }
+
+  // reload + show immediately
+  await loadAllData();
+  renderAdmin();
+  renderCalendar();
+
+} else {
+
 
     if (error){
       alert(error.message);
