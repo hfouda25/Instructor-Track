@@ -288,7 +288,13 @@ if (isAdmin){
     .from('topics')
     .select('id, subject_id, instructor_id, date, hours, topic_title, completed');
 } else {
-  const myId = state.profile?.id || 'none';
+ const myId = state.profile?.id;
+if (!myId) {
+  alert('Profile not loaded: cannot determine instructor_id. Please sign out and sign in again.');
+  state.topics = [];
+  return;
+}
+
   topsRes = await supabaseClient
     .from('topics')
     .select('id, subject_id, instructor_id, date, hours, topic_title, completed')
