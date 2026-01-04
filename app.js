@@ -281,9 +281,10 @@ async function loadAllData(){
     state.subjects = subs||[];
     const { data: asg } = await supabaseClient.from('assignments').select('*');
     state.assignments = asg||[];
-    if (isAdmin){
-      const { data: tops } = await supabaseClient.from('topics').select('*');
-      state.topics = tops||[];
+   // TEMP: load all topics (timetable dates will be added later)
+const { data: tops } = await supabaseClient.from('topics').select('*');
+state.topics = tops || [];
+
       // map DB columns to app expected names (for display)
 state.topics.forEach(t=>{
   if (t.title == null) t.title = t.topic_title;
