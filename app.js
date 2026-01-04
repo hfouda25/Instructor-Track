@@ -281,14 +281,32 @@ async function loadAllData(){
     state.subjects = subs||[];
     const { data: asg } = await supabaseClient.from('assignments').select('*');
     state.assignments = asg||[];
-    if (isAdmin){
-      const { data: tops } = await supabaseClient.from('topics').select('*');
-      state.topics = tops||[];
-    } else {
-      const myId = state.profile?.id || 'none';
-      const { data: tops } = await supabaseClient.from('topics').select('*').eq('instructor_id', myId);
-      state.topics = tops||[];
-    }
+ let topsRes;
+
+if (isAdmin){
+  topsRes = await supabaseClient
+    .from('topics')
+    .select('id, subject_id, instructor_id, date, hours, topic_title, completed');
+} else {
+  const myId = state.profile?.id || 'none';
+  topsRes = await supabaseClient
+    .from('topics')
+    .select('id, subject_id, instructor_id, date, hours, topic_title, completed')
+    .eq('instructor_id', myId);
+}
+
+if (topsRes.error) {
+  alert(topsRes.error.message);
+  state.topics = [];
+} else {
+  // 🔑 normalize for the UI
+  state.topics = (topsRes.data || []).map(t => ({
+    ...t,
+    title: t.topic_title || '',
+    duration_hours: t.hours ?? 0
+  }));
+}
+
   } else {
     const db = readDemo();
     state.instructors = (db.users||[]).filter(u=>!u.is_admin);
