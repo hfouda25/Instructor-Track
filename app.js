@@ -423,7 +423,7 @@ document.getElementById('pwUser').innerHTML = users.map(u=>`<option value="${u.i
   const rows = state.topics.slice().sort((a,b)=>a.date.localeCompare(b.date)).map(t=>{
     const subj = state.subjects.find(s=>s.id===t.subject_id);
     const inst = state.instructors.find(i=>i.id===t.instructor_id);
-    return `<div class="row"><span>${t.date}</span><b>${subj?.name||''}</b><span>${t.title||''}</span><span>${inst?.name||''}</span><span>${t.duration_hours||0} h</span></div>`;
+    return `<div class="row"><span>${t.date}</span><b>${subj?.name||''}</b><... <span>${(t.topic_title || t.title || '')}</span> ...><span>${inst?.name||''}<<span>${(t.hours ?? t.duration_hours ?? 0)} h</span>></div>`;
   }).join('');
   $('#topicList').innerHTML = rows || '<div class="muted">No topics yet.</div>';
 
