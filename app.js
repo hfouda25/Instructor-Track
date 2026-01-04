@@ -559,65 +559,46 @@ async function addTopic(){
   }
 
  if (mode === 'supabase') {
+  const subject_id = $('#topicSubject').value;
+  const instructor_id = $('#topicInstructor').value;
+  const date = $('#topicDate').value || null;
+  const hours = parseFloat($('#topicHours').value || '0');
+  const start = ($('#topicStart') ? $('#topicStart').value : '') || null;
+  const end = ($('#topicEnd') ? $('#topicEnd').value : '') || null;
+  const topic_title = ($('#topicTitle') ? $('#topicTitle').value.trim() : '');
 
-  const { error } = await supabaseClient.from('topics').insert([{
-    subject_id,
-    instructor_id,
-    date: date || null,
-    hours: hours || 0,
-    topic_title: topic_title || '',
-    completed: false
+  if (!subject_id || !instructor_id || !topic_title) {
+    alert('Please fill Subject, Instructor, and Topic title');
+    return;
+  }
 
+  const { error } = await supabaseClient
+    .from('topics')
+    .insert([{
+      subject_id,
+      instructor_id,
+      date,
+      hours: isNaN(hours) ? 0 : hours,
+      start,
+      end,
+      topic_title,
+      completed: false
+    }]);
 
   if (error) {
     alert(error.message);
     return;
   }
 
-  // reload + show immediately
+  // ✅ EXACTLY like Subjects: re-load everything from Supabase, then render
   await loadAllData();
   renderAdmin();
   renderCalendar();
 
-} else {
-
-
-    if (error){
-      alert(error.message);
-      return;
-    }
-
-    // reload + show immediately
-    await loadAllData();
-    renderAdmin();
-    renderCalendar();
-
-    // clear inputs
-    $('#topicTitle').value = '';
-    $('#topicHours').value = '1';
-    // keep date if you want, or clear it:
-    // $('#topicDate').value = '';
-
-  } else {
-    // demo mode
-    const db = readDemo();
-    db.topics.push({
-      id: 't_' + Math.random().toString(36).slice(2,8),
-      subject_id,
-      instructor_id,
-      date,
-      hours,
-      topic_title,
-      completed: false
-    });
-    writeDemo(db);
-    await loadAllData();
-    renderAdmin();
-    renderCalendar();
-
-    $('#topicTitle').value = '';
-    $('#topicHours').value = '1';
-  }
+  // clear inputs
+  $('#topicTitle').value = '';
+  $('#topicHours').value = '1';
+  return;
 }
 
 
@@ -655,13 +636,13 @@ function renderReports() {
     ? !!state.profile?.is_admin
     : !!state.user?.is_admin;
 
-  const myId = (mode === 'supabase'
-    ? state.profile?.id
-    : state.user?.id);
+const myId = (mode === 'supabase')
+  ? (state.profile?.id || null)
+  : (state.user?.id || null);
 
   const list = isAdmin
-    ? state.topics
-    : state.topics.filter(t => t.instructor_id === myId);
+  ? (state.topics || [])
+  : (myId ? (state.topics || []).filter(t => t.instructor_id === myId) : []);
 
   let head =
     '<table class="table"><thead><tr>' +
@@ -673,7 +654,9 @@ function renderReports() {
     const subj = state.subjects.find(s => s.id === t.subject_id);
     const inst = state.instructors.find(i => i.id === t.instructor_id);
     const status = t.completed ? 'Complete' : 'Pending';
-    const topic = t.completed ? (t.title || '') : 'No completed topics yet';
+  const topicName = (t.topic_title ?? t.title ?? '');
+const topic = t.completed ? topicName : topicName; // (show it always)
+
     const instructor = t.completed ? (inst?.name || inst?.email || '') : 'No completed topics yet';
     const date = t.date || '';
     const hours = (t.duration_hours || 0).toFixed(1);
