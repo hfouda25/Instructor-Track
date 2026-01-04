@@ -281,24 +281,13 @@ async function loadAllData(){
     state.subjects = subs||[];
     const { data: asg } = await supabaseClient.from('assignments').select('*');
     state.assignments = asg||[];
-   // TEMP: load all topics (timetable dates will be added later)
-const { data: tops } = await supabaseClient.from('topics').select('*');
-state.topics = tops || [];
-
-      // map DB columns to app expected names (for display)
-state.topics.forEach(t=>{
-  if (t.title == null) t.title = t.topic_title;
-  if (t.duration_hours == null) t.duration_hours = t.hours;
-});
+    if (isAdmin){
+      const { data: tops } = await supabaseClient.from('topics').select('*');
+      state.topics = tops||[];
     } else {
       const myId = state.profile?.id || 'none';
       const { data: tops } = await supabaseClient.from('topics').select('*').eq('instructor_id', myId);
       state.topics = tops||[];
-      // map DB columns to app expected names (for display)
-state.topics.forEach(t=>{
-  if (t.title == null) t.title = t.topic_title;
-  if (t.duration_hours == null) t.duration_hours = t.hours;
-});
     }
   } else {
     const db = readDemo();
@@ -424,7 +413,7 @@ document.getElementById('pwUser').innerHTML = users.map(u=>`<option value="${u.i
   const rows = state.topics.slice().sort((a,b)=>a.date.localeCompare(b.date)).map(t=>{
     const subj = state.subjects.find(s=>s.id===t.subject_id);
     const inst = state.instructors.find(i=>i.id===t.instructor_id);
-    return `<div class="row"><span>${t.date}</span><b>${subj?.name||''}</b><... <span>${(t.topic_title || t.title || '')}</span> ...><span>${inst?.name||''}<<span>${(t.hours ?? t.duration_hours ?? 0)} h</span>></div>`;
+    return `<div class="row"><span>${t.date}</span><b>${subj?.name||''}</b><span>${t.title||''}</span><span>${inst?.name||''}</span><span>${t.duration_hours||0} h</span></div>`;
   }).join('');
   $('#topicList').innerHTML = rows || '<div class="muted">No topics yet.</div>';
 
@@ -530,50 +519,21 @@ async function assignSubject(){
 async function addTopic(){
   const subject_id = $('#topicSubject').value;
   const instructor_id = $('#topicInstructor').value;
-  const date = $('#topicDate').value || null;
-  const hours = parseFloat($('#topicHours').value || '0');
+  const date = $('#topicDate').value;
+  const hours = parseFloat($('#topicHours').value||'0');
+  const start = $('#topicStart').value || null;
+  const end = $('#topicEnd').value || null;
   const title = $('#topicTitle').value.trim();
-
-  if (!subject_id || !instructor_id || !title) {
-    alert('Please fill Subject, Instructor and Topic title');
-    return;
-  }
-
-  if (mode === 'supabase') {
-    const { error } = await supabaseClient
-      .from('topics')
-      .insert({
-        subject_id: subject_id,
-        instructor_id: instructor_id,
-        date: date,
-        hours: hours,
-        topic_title: title
-      });
-
-    if (error) {
-      alert(error.message);
-    } else {
-      await loadAllData();
-      renderCalendar();
-      renderAdmin();
-    }
+  if (!subject_id || !instructor_id || !date || !title) return;
+  if (mode==='supabase'){
+    const { error } = await supabaseClient.from('topics').insert({ subject_id, instructor_id, date, start, end, duration_hours: hours, title, completed: false });
+    if (error) alert(error.message); else { await loadAllData(); renderCalendar(); renderAdmin(); }
   } else {
     const db = readDemo();
-    db.topics.push({
-      id: 't_' + Math.random().toString(36).slice(2, 8),
-      subject_id,
-      instructor_id,
-      date,
-      hours,
-      topic_title: title
-    });
-    writeDemo(db);
-    await loadAllData();
-    renderCalendar();
-    renderAdmin();
+    db.topics.push({ id:'t_'+Math.random().toString(36).slice(2,8), subject_id, instructor_id, date, start, end, duration_hours: hours, title, completed:false });
+    writeDemo(db); await loadAllData(); renderCalendar(); renderAdmin();
   }
 }
-
 
 // ---------- BACKUP (DEMO MODE) ----------
 function exportBackup(){
