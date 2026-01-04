@@ -519,53 +519,70 @@ async function assignSubject(){
 async function addTopic(){
   const subject_id = $('#topicSubject').value;
   const instructor_id = $('#topicInstructor').value;
-  const date = $('#topicDate').value;
-  const hours = parseFloat($('#topicHours').value||'0');
+  const date = $('#topicDate').value; // can be empty
+  const hours = parseFloat($('#topicHours').value || '0');
   const start = $('#topicStart').value || null;
   const end = $('#topicEnd').value || null;
-  const title = $('#topicTitle').value.trim();
- if (!subject_id || !instructor_id || !title) {
-  alert('Subject, Instructor and Topic title are required');
-  return;
-}
+  const title = ($('#topicTitle').value || '').trim();
 
-  if (mode==='supabase'){
-const { data, error } = await supabaseClient
-  .from('topics')
-  .insert({
-    subject_id,
-    instructor_id,
-    date: date || null,
-    start,
-    end,
-    hours,
-    topic_title: title,
-    completed: false
-  })
-  .select('*')
-  .single();
+  if (!subject_id || !instructor_id || !title) {
+    alert('Subject, Instructor and Topic title are required');
+    return;
+  }
 
-if (error) {
-  alert(error.message);
-  return;
-}
+  if (mode === 'supabase') {
+    const payload = {
+      subject_id,
+      instructor_id,
+      date: date || null,
+      start,
+      end,
+      hours,
+      topic_title: title,
+      completed: false
+    };
 
-// 🔥 FORCE UI UPDATE
-state.topics = state.topics || [];
-state.topics.unshift(data);
+    const { data, error } = await supabaseClient
+      .from('topics')
+      .insert(payload)
+      .select('*')
+      .single();
 
-// clear inputs ONLY after success
-$('#topicTitle').value = '';
-$('#topicHours').value = '1';
-$('#topicDate').value = '';
+    if (error) {
+      alert(error.message);
+      return;
+    }
 
-renderAdmin();
-renderCalendar();
-; }
+    // update UI immediately
+    state.topics = state.topics || [];
+    state.topics.unshift(data);
+
+    // clear inputs after success
+    $('#topicTitle').value = '';
+    $('#topicHours').value = '1';
+    $('#topicDate').value = '';
+
+    renderAdmin();
+    renderCalendar();
+
   } else {
+    // demo mode
     const db = readDemo();
-    db.topics.push({ id:'t_'+Math.random().toString(36).slice(2,8), subject_id, instructor_id, date, start, end, duration_hours: hours, title, completed:false });
-    writeDemo(db); await loadAllData(); renderCalendar(); renderAdmin();
+    db.topics.push({
+      id: 't_' + Math.random().toString(36).slice(2, 8),
+      subject_id,
+      instructor_id,
+      date: date || null,
+      start,
+      end,
+      hours,
+      topic_title: title,
+      completed: false
+    });
+    writeDemo(db);
+    await loadAllData();
+    renderCalendar();
+    renderAdmin();
   }
 }
 
