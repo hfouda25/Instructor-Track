@@ -524,10 +524,44 @@ async function addTopic(){
   const start = $('#topicStart').value || null;
   const end = $('#topicEnd').value || null;
   const title = $('#topicTitle').value.trim();
-  if (!subject_id || !instructor_id || !date || !title) return;
+ if (!subject_id || !instructor_id || !title) {
+  alert('Subject, Instructor and Topic title are required');
+  return;
+}
+
   if (mode==='supabase'){
-    const { error } = await supabaseClient.from('topics').insert({ subject_id, instructor_id, date, start, end, duration_hours: hours, title, completed: false });
-    if (error) alert(error.message); else { await loadAllData(); renderCalendar(); renderAdmin(); }
+const { data, error } = await supabaseClient
+  .from('topics')
+  .insert({
+    subject_id,
+    instructor_id,
+    date: date || null,
+    start,
+    end,
+    hours,
+    topic_title: title,
+    completed: false
+  })
+  .select('*')
+  .single();
+
+if (error) {
+  alert(error.message);
+  return;
+}
+
+// 🔥 FORCE UI UPDATE
+state.topics = state.topics || [];
+state.topics.unshift(data);
+
+// clear inputs ONLY after success
+$('#topicTitle').value = '';
+$('#topicHours').value = '1';
+$('#topicDate').value = '';
+
+renderAdmin();
+renderCalendar();
+; }
   } else {
     const db = readDemo();
     db.topics.push({ id:'t_'+Math.random().toString(36).slice(2,8), subject_id, instructor_id, date, start, end, duration_hours: hours, title, completed:false });
