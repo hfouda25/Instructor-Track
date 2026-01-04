@@ -519,56 +519,66 @@ async function assignSubject(){
 async function addTopic(){
   const subject_id = $('#topicSubject').value;
   const instructor_id = $('#topicInstructor').value;
-  const date = $('#topicDate').value || null;
+  const date = $('#topicDate').value;
   const hours = parseFloat($('#topicHours').value || '0');
-  const title = ($('#topicTitle').value || '').trim();
+  const topic_title = ($('#topicTitle').value || '').trim();
 
-  if (!subject_id || !instructor_id || !title) {
-    alert('Please fill Subject, Instructor and Topic title');
+  // required fields
+  if (!subject_id || !instructor_id || !date || !topic_title){
+    alert('Please fill Subject, Instructor, Date and Topic title');
     return;
   }
 
   if (mode === 'supabase') {
     const { error } = await supabaseClient
       .from('topics')
-      .insert({
+      .insert([{
         subject_id,
         instructor_id,
         date,
         hours,
-        topic_title: title,
+        topic_title,
         completed: false
-      });
+      }]);
 
-    if (error) { alert(error.message); return; }
+    if (error){
+      alert(error.message);
+      return;
+    }
 
+    // reload + show immediately
     await loadAllData();
     renderAdmin();
     renderCalendar();
 
+    // clear inputs
+    $('#topicTitle').value = '';
+    $('#topicHours').value = '1';
+    // keep date if you want, or clear it:
+    // $('#topicDate').value = '';
+
   } else {
+    // demo mode
     const db = readDemo();
     db.topics.push({
-      id: 't_' + Math.random().toString(36).slice(2, 8),
+      id: 't_' + Math.random().toString(36).slice(2,8),
       subject_id,
       instructor_id,
       date,
       hours,
-      topic_title: title,
+      topic_title,
       completed: false
     });
     writeDemo(db);
-
     await loadAllData();
     renderAdmin();
     renderCalendar();
-  }
 
-  // clear fields after success
-  $('#topicTitle').value = '';
-  $('#topicHours').value = '1';
-  $('#topicDate').value = '';
+    $('#topicTitle').value = '';
+    $('#topicHours').value = '1';
+  }
 }
+
 
 // ---------- BACKUP (DEMO MODE) ----------
 function exportBackup(){
