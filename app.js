@@ -307,13 +307,17 @@ if (isAdmin) {
   .select('*')
   .eq('instructor_id', state.profile.id);
 
-    .eq('instructor_id', state.profile.id);
 
   if (error) {
     alert(error.message);
     state.topics = [];
   } else {
-    state.topics = tops || [];
+  state.topics = (tops || []).map(t => ({
+  ...t,
+  title: t.topic_title || t.title || '',
+  duration_hours: t.hours ?? 0
+}));
+
   }
 }
 
